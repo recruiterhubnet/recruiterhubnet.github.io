@@ -1,0 +1,1671 @@
+html {
+    font-size: 16px;
+}
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #030712;
+    color: #d1d5db;
+    font-size: 0.95rem;
+}
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #111827; }
+::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+.card {
+     background: #111827; /* Darker card background */
+     border: 1px solid #374151;
+     border-radius: 0.75rem; /* Slightly larger border radius */
+     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.table-wrapper, .control-deck, .filters-panel {
+    border: 1px solid #374151;
+    border-radius: 0.5rem;
+}
+
+.table-wrapper {
+    background: #111827;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.table-container {
+    max-height: 83vh;
+    overflow: auto;
+}
+
+.table-header-cell, .table-footer-cell {
+    background-color: #1f2937;
+}
+
+/* --- Add this new rule below the existing one --- */
+#leadRiskView .table-footer-cell {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+}
+
+/* --- START: REDESIGNED RANKINGS TABLE STYLES --- */
+.rankings-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.rankings-table thead {
+    /* Set a fallback background for the entire header section */
+    background-color: #111827; 
+}
+.rankings-table thead th {
+    position: sticky;
+    z-index: 20; /* Increased z-index to ensure it's above scrolling content */
+    /* Remove padding and rely on line-height/height for internal spacing */
+    padding: 0 0.375rem; /* Remove vertical padding, keep horizontal */
+    line-height: 1.5; /* Adjust line-height to control vertical space for text */
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+    transform: translateZ(0); /* Force hardware acceleration, often fixes transparency issues */
+}
+
+/* Explicit heights for header sections to control row spacing */
+.rankings-table .th-main-group,
+.rankings-table .th-effort-group,
+.rankings-table .th-compliance-group,
+.rankings-table .th-arrivals-group {
+    height: 30px; /* Explicit height for the main group row */
+}
+.rankings-table .th-sub-group,
+.rankings-table .th-col-label {
+    height: 25px; /* Explicit height for sub-group and metric label rows */
+}
+
+
+/* Precise top positioning for each header row based on explicit heights */
+.rankings-table thead tr:nth-child(1) th {
+    top: 0;
+}
+.rankings-table thead tr:nth-child(2) th {
+    top: 30px; /* Height of first row */
+}
+.rankings-table thead tr:nth-child(3) th {
+    top: 55px; /* Height of first row (30px) + height of second row (25px) */
+}
+
+/* Specific styling for the different header levels */
+.rankings-table .th-base {
+    font-size: 0.7rem;
+    font-weight: 500;
+    border-bottom: 1px solid #4b5563; 
+}
+.rankings-table .th-main-group {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #4b5563;
+}
+.rankings-table .th-sub-group {
+    font-size: 0.7rem; /* Smaller font for sub-group labels */
+    font-weight: 600; /* Slightly bolder than metric labels */
+    border-bottom: 1px solid #4b5563;
+}
+.rankings-table .th-col-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    border-bottom: 1px solid #4b5563; /* Explicitly added border-bottom for the last row of header cells */
+}
+
+/* Colors for main header groups - ensure they override default and are solid */
+.rankings-table .th-effort-group {
+    background-color: #f97316; /* A shade of orange for Effort */
+    color: #ffedd5;
+}
+.rankings-table .th-compliance-group {
+    background-color: #047857; /* A shade of green for Compliance */
+    color: #a7f3d0;
+}
+.rankings-table .th-arrivals-group {
+    background-color: #7c2d12; /* A shade of orange/brown for Arrivals */
+    color: #fdbb74;
+}
+
+.rankings-table td {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.5rem; /* Vertical and horizontal padding */
+    border-bottom: 1px solid #1f2937; /* Add a subtle bottom border to each cell */
+}
+/* Stronger vertical separators for main categories */
+.rankings-table .border-l-main { 
+    border-left: 3px solid rgb(75, 85, 99); /* Thicker and slightly lighter gray border */
+}
+.rankings-table .border-l-sub-group { border-left: 1px solid rgb(55, 65, 81); }
+
+.final-score-cell {
+    background-color: rgba(59, 130, 246, 0.15);
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    color: #a5cfff !important;
+}
+.final-score-header {
+    background-color: #1e3a8a !important;
+    border-left: 3px solid rgb(75, 85, 99);
+}
+
+.percentile-cell {
+    color: #9ca3af; /* text-gray-400 */
+}
+
+.score-summary-cell {
+    background-color: rgba(30, 41, 59, 0.8); /* bg-slate-800/80 */
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #e2e8f0; /* slate-200 */
+}
+
+.effort-score-header, .effort-score-cell {
+    background-color: rgba(249, 115, 22, 0.15); /* Lighter Orange */
+}
+.compliance-score-header, .compliance-score-cell {
+    background-color: rgba(16, 185, 129, 0.15); /* Lighter Green */
+}
+.arrivals-score-header, .arrivals-score-cell {
+    background-color: rgba(239, 68, 68, 0.15); /* Lighter Red */
+}
+
+.effort-score-header { background-color: rgba(249, 115, 22, 0.15); color: #ffedd5; }
+.compliance-score-header { background-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; }
+.arrivals-score-header { background-color: rgba(239, 68, 68, 0.15); color: #fdbb74; }
+
+.slider-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+.slider-group .slider-container {
+    display: grid;
+    grid-template-columns: 1fr 2fr 50px;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+.slider-group .slider-container label {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+.slider-group .slider-container input[type="range"] {
+    width: 100%;
+}
+.slider-group .slider-container .slider-value {
+    text-align: left;
+    font-family: 'ui-monospace', 'monospace';
+    font-size: 0.8rem;
+    color: #e5e7eb;
+}
+
+
+/* Footer sticky positioning and background - ensure solid */
+.rankings-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 20; /* Ensure footer is also above scrolling content */
+    background-color: #1f2937; /* Ensure solid background for footer */
+    border-top: 2px solid #4b5563; /* Keep a clear border above the footer */
+    box-sizing: border-box; /* Consistency in sizing */
+    transform: translateZ(0); /* Apply transform for consistent rendering with sticky header */
+}
+/* --- END: REDESIGNED RANKINGS TABLE STYLES --- */
+
+
+.sort-icon { display: none; margin-left: 0.5rem; }
+.sortable.sorted-asc .sort-icon-up,
+.sortable.sorted-desc .sort-icon-down {
+    display: inline-block;
+    color: #2563eb;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+
+/* ... (rest of your CSS file remains the same) ... */
+.op-toggle {
+    font-size: 0.7rem; line-height: 1; padding: 4px 6px; border-radius: 9999px; font-weight: 700;
+    transition: background-color 0.2s, color 0.2s; border: 1px solid #4b5563;
+}
+.op-toggle.and { background-color: #1e3a8a; color: #bfdbfe; }
+.op-toggle.or { background-color: #9a3412; color: #fdba74; }
+
+#columnToggleDropdown { transition: opacity 0.2s, transform 0.2s; }
+
+.modal-input, .control-deck-input {
+    background-color: #374151; border: 1px solid #4b5563; color: #d1d5db;
+    border-radius: 0.375rem; padding: 0.5rem; font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.modal-input:focus, .control-deck-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #1e40af; outline: none; }
+
+.modal-select, .control-deck-select, .chart-modal-select, #heatmapDataTypeSelect, #insightChartSelect {
+    background-color: #374151; border: 1px solid #4b5563; color: #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+}
+
+.control-deck-select { font-size: 0.875rem; }
+.chart-modal-select { padding: 2px 2rem 2px 0.5rem; font-size: 0.75rem; }
+#heatmapDataTypeSelect {
+     padding: 0.25rem 2rem 0.25rem 0.5rem;
+     font-size: 0.75rem;
+}
+ #insightChartSelect {
+     padding: 0.25rem 2rem 0.25rem 0.5rem;
+     font-size: 0.75rem;
+}
+
+.icon-btn {
+    background: none; border: 1px solid #4b5563; color: #9ca3af;
+    border-radius: 0.375rem; padding: 0.5rem 0.75rem;
+    height: 40px; /* Match height of date inputs */
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s, background-color 0.2s; cursor: pointer;
+}
+.icon-btn:hover { color: #e5e7eb; background-color: #4b5563;}
+
+.view-toggle-btn.active, .chart-toggle-btn.active { background-color: #2563eb; color: #fff; }
+.view-toggle-btn, .chart-toggle-btn { background-color: #374151; color: #d1d5db; }
+
+.table-body-row:hover { cursor: pointer; }
+
+@keyframes pulsate { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+.pulsate { animation: pulsate 2s infinite ease-in-out; }
+
+.color-swatch { border: 2px solid transparent; }
+.color-swatch.selected { border-color: #60a5fa; box-shadow: 0 0 0 2px #374151, 0 0 0 4px #60a5fa; }
+
+/* Tooltip style */
+.tooltip-container { position: relative; display: inline-flex; align-items: center; }
+.tooltip-icon { color: #9ca3af; cursor: help; margin-left: 8px; }
+.tooltip-text {
+    visibility: hidden; width: 320px; background-color: #1f2937; color: #d1d5db;
+    text-align: left; border-radius: 6px; padding: 8px; position: absolute;
+    z-index: 50; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 8px;
+    opacity: 0; transition: opacity 0.3s; border: 1px solid #374151;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 0.75rem; line-height: 1.4;
+}
+
+/* NEW: Rule for right-aligned tooltips */
+.help-tooltip-text.tooltip-align-right {
+    right: 0;
+    transform: translateX(0);
+}
+
+/* NEW: Rule for left-aligned tooltips */
+.help-tooltip-text.tooltip-align-left {
+    left: 0;
+    transform: translateX(0);
+}
+
+.tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+.help-tooltip-container:hover .help-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+.tooltip-text b { color: #60a5fa; }
+
+/* Settings Modal Redesign */
+.settings-nav-btn {
+    display: flex; align-items: center; width: 100%; padding: 0.75rem 1rem;
+    border-radius: 0.5rem; font-weight: 500; color: #9ca3af;
+    transition: background-color 0.2s, color 0.2s;
+}
+.settings-nav-btn:hover { background-color: #374151; color: #e5e7eb; }
+.settings-nav-btn.active { background-color: #2563eb; color: #ffffff; }
+.settings-nav-btn i { width: 1.25rem; margin-right: 0.75rem; text-align: center; }
+
+/* SIDEBAR & WORKING HOURS STYLES */
+.sidebar { transition: width 0.3s ease-in-out; }
+.sidebar-header { transition: padding 0.3s ease-in-out; }
+.nav-text, .logo-text { transition: opacity 0.2s ease-in-out, width 0.3s ease-in-out; white-space: nowrap; }
+
+.sidebar.collapsed { width: 5.5rem; }
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    gap: 0;
+}
+.sidebar.collapsed .logo-text, .sidebar.collapsed .nav-text { opacity: 0; pointer-events: none; width: 0; }
+.sidebar.collapsed .main-nav-btn { justify-content: center; }
+.sidebar.collapsed .main-nav-btn i { margin-right: 0; }
+.sidebar.collapsed #sidebarNav {
+    overflow: hidden;
+}
+
+.main-nav-btn {
+    display: flex; align-items: center; width: 100%; padding: 0.75rem 1rem;
+    border-radius: 0.5rem; font-weight: 500; color: #9ca3af;
+    transition: background-color 0.2s, color 0.2s; border: 1px solid transparent;
+}
+.main-nav-btn:hover { background-color: #374151; color: #e5e7eb; }
+.main-nav-btn.active { background-color: #1f2937; color: #ffffff; border-color: #4b5563; }
+.main-nav-btn i { width: 1.25rem; margin-right: 0.75rem; text-align: center; transition: margin 0.3s ease-in-out; }
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: auto repeat(24, 1fr);
+    gap: 2px;
+    min-width: 800px;
+}
+.heatmap-cell {
+    aspect-ratio: 1.9 / 1; border-radius: 3px; background-color: #374151;
+    cursor: pointer; transition: all 0.2s; border: 2px solid transparent;
+}
+.heatmap-cell:hover { transform: scale(1.1); z-index: 5; }
+.heatmap-cell.selected { border-color: #60a5fa; box-shadow: 0 0 0 2px #374151, 0 0 0 4px #60a5fa; transform: scale(1.1); z-index: 5; }
+
+.heatmap-label { display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #9ca3af; }
+
+.lead-assignment-table {
+    height: 100%;
+}
+
+.lead-assignment-table .table-container {
+    flex-grow: 1;
+    max-height: none;
+    height: 0;
+}
+#leadRiskView .table-footer-cell,
+#arrivalsView .table-footer-cell,
+#timeToEngageView .table-footer-cell,
+#leadAssignmentView .table-footer-cell {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    /* Add this line to create the visible separator */
+    border-top: 2px solid #4b5563; 
+}
+.rankings-table .td-tte {
+    text-align: center;
+}
+/* --- CSS (css/styles.css) - START --- */
+
+/* Styles for the new help icon and its tooltip */
+.help-tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px; /* Give it some space from the button */
+}
+
+.help-tooltip-icon {
+    color: #9ca3af; /* gray-400 */
+    cursor: help;
+    font-size: 0.9rem; /* Slightly smaller than text */
+    border: 1px solid #4b5563; /* gray-600 */
+    border-radius: 9999px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-tooltip-icon:hover {
+    background-color: #4b5563; /* gray-600 */
+    color: #ffffff;
+}
+
+.help-tooltip-text {
+    visibility: hidden;
+    width: 450px; /* Wider tooltip for detailed explanation */
+    background-color: #1f2937; /* gray-800 */
+    color: #d1d5db; /* gray-300 */
+    text-align: left;
+    border-radius: 6px;
+    padding: 12px;
+    position: absolute;
+    z-index: 50;
+    top: 100%; /* Position it below the icon */
+    right: 0; /* Changed from left: 0 */
+    margin-top: 8px; /* Add some space */
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid #374151; /* gray-700 */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.help-tooltip-text h5 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #60a5fa; /* A shade of blue */
+    margin-bottom: 8px;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 4px;
+}
+
+.help-tooltip-text p {
+    margin-bottom: 8px;
+}
+.help-tooltip-text p:last-child {
+    margin-bottom: 0;
+}
+
+
+
+/* --- Footer Score Styling --- */
+
+/* This styles the dimmer sub-scores (Calls Score, SMS Score) */
+.rankings-table tfoot .score-summary-cell {
+    font-weight: 600;
+}
+
+/* This styles the brighter main scores in the footer */
+.rankings-table tfoot .effort-score-cell,
+.rankings-table tfoot .compliance-score-cell,
+.rankings-table tfoot .arrivals-score-cell,
+.rankings-table tfoot .final-score-cell {
+    color: #e5e7eb; /* Brighter text color */
+    font-weight: 700;
+}
+
+/* --- CSS (css/styles.css) - END --- */
+/* --- CSS (css/styles.css) - START --- */
+
+/* --- Detailed Breakdown Modal --- */
+.breakdown-modal-content {
+    background-color: #1f2937; /* A slightly lighter shade than the main BG */
+    display: flex;
+    flex-direction: column;
+}
+
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #374151;
+    flex-shrink: 0;
+}
+.breakdown-nav-btn {
+    background: none;
+    border: 1px solid #4b5563;
+    color: #d1d5db;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+.breakdown-nav-btn:hover:not(:disabled) {
+    background-color: #374151;
+}
+.breakdown-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.breakdown-tabs {
+    display: flex;
+    padding: 0.5rem;
+    background-color: #111827;
+    border-bottom: 1px solid #374151;
+    flex-shrink: 0;
+}
+.breakdown-tab-btn {
+    flex-grow: 1;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #9ca3af;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+.breakdown-tab-btn.active {
+    background-color: #374151;
+    color: #ffffff;
+    border-color: #4b5563;
+}
+
+.breakdown-body {
+    padding: 1rem;
+    flex-grow: 1;
+    overflow: hidden; /* Prevent internal scrolling */
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+.kpi-item .kpi-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+.kpi-item .kpi-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e5e7eb;
+}
+
+.breakdown-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    flex-grow: 1;
+    overflow: hidden; /* This is the key change to prevent scrolling */
+    height: 300px; /* Constrains the height of the chart/table area */
+}
+
+/* --- CSS (css/styles.css) - START --- */
+
+.chart-carousel-container {
+    position: relative;
+    height: 100%;
+    min-height: 250px;
+    display: flex; /* Use flexbox for layout */
+    flex-direction: column; /* Stack chart and dots vertically */
+}
+.chart-carousel-slide {
+    display: none;
+    height: 100%;
+    flex-grow: 1; /* Allow the chart canvas to fill available space */
+    position: relative;
+}
+.chart-carousel-slide.active {
+    display: block;
+}
+.carousel-nav-btn {
+    display: none; /* Hide the previous/next arrows */
+}
+.carousel-dots {
+    /* Remove absolute positioning */
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    padding-top: 8px; /* Add space between chart and dots */
+    flex-shrink: 0; /* Prevent dots from shrinking */
+}
+.carousel-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.carousel-dot.active {
+    background-color: white;
+}
+
+.details-table-container {
+    border: 1px solid #374151;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.details-table-wrapper {
+    overflow-y: auto;
+}
+.details-table {
+    width: 100%;
+    font-size: 0.8rem;
+}
+.details-table th, .details-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+.details-table tr:not(:last-child) {
+    border-bottom: 1px solid #374151;
+}
+.details-table th {
+    background-color: #374151;
+    font-weight: 600;
+    position: sticky; /* Make the header sticky */
+    top: 0;          /* Stick it to the top of its scrolling container */
+    z-index: 10;     /* Ensure it appears above scrolling content */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Optional: add a subtle shadow for separation */
+}
+.details-table td:last-child {
+    text-align: right;
+    font-family: 'ui-monospace', 'monospace';
+    font-weight: 600;
+    color: #a5cfff;
+}
+/* --- CSS (css/styles.css) - END --- */
+
+/* --- RIGHT CONTROL PANEL --- */
+.right-control-panel {
+    background-color: var(--surface-color, #111827);
+    border: 1px solid var(--border-color, #374151);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+/* Rule for the "VIEW", "ENTITY TYPE", and "PERFORMANCE DATES" labels */
+.control-group label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    display: block;
+    text-align: center;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #374151;
+}
+
+.company-list-header span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block; /* Ensures it behaves like the other labels */
+}
+.master-view-btn {
+    background-color: #1f2937; /* A slightly different background */
+    margin-bottom: 1.5rem; /* This now matches the main control group gap */
+}
+/* Corrected rule for the "COMPANIES" header */
+.company-list-header {
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem; /* Make spacing consistent with labels */
+    border-bottom: 1px solid #374151;
+    text-align: center;
+}
+.view-switcher { display: flex; flex-direction: column; gap: 0.5rem; }
+.view-btn {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--border-color, #374151);
+    border-radius: 0.375rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    text-align: left;
+    background-color: var(--surface-muted, #1f2937);
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.view-btn i { margin-right: 0.75rem; width: 1.2em; }
+.view-btn:hover { background-color: var(--border-color, #374151); color: var(--text-primary, #e2e8f0); }
+.view-btn.active {
+    background-color: var(--accent-blue, #2563eb);
+    color: white;
+    border-color: var(--text-accent, #60a5fa);
+}
+.date-filters { display: flex; flex-direction: column; gap: 0.5rem; }
+.date-filters input[type="date"] {
+    background-color: var(--surface-muted, #1f2937); border: 1px solid var(--border-color, #374151);
+    color: var(--text-primary, #e2e8f0); border-radius: 0.25rem; padding: 0.4rem 0.6rem; font-size: 0.8rem;
+}
+.settings-btn {
+    width: 100%;
+    margin-top: auto; /* Pushes to the bottom */
+    background-color: var(--surface-muted, #1f2937); color: var(--text-secondary, #94a3b8); border: 1px solid var(--border-color, #374151);
+    border-radius: 0.375rem; padding: 0.6rem 1rem; cursor: pointer; transition: all 0.2s;
+}
+.settings-btn:hover { background-color: var(--border-color, #374151); color: white; }
+
+/* --- MAIN CONTENT AREA --- */
+.main-content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow: hidden;
+}
+
+/* Targets Table */
+.targets-card {
+    flex-shrink: 0;
+    overflow-x: auto;
+    max-height: calc(100vh / 3); /* Set max height to approximately 1/3rd of the viewport height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    box-sizing: border-box; /* Ensure padding and borders are included in the height calculation */
+}
+.targets-table { font-size: 0.8rem; width: 100%; border-collapse: collapse; }
+.targets-table th, .targets-table td { padding: 0.3rem 0.6rem; text-align: center; }
+.targets-table th { color: var(--text-secondary, #94a3b8); font-weight: 500; font-size: 0.7rem; text-transform: uppercase; }
+.targets-table .col-contract-name { text-align: left; position: sticky; left: 0; background-color: var(--surface-color, #111827); }
+.targets-table tbody tr {
+    border-bottom: 1px solid #374151; /* Adds the horizontal line */
+}
+
+.targets-table tbody tr:last-child {
+    border-bottom: none; /* Removes the line from the very last row */
+}
+.target-input {
+    width: 60px; background-color: var(--bg-color, #030712); border: 1px solid var(--border-color, #374151);
+    color: var(--text-accent, #60a5fa); border-radius: 0.25rem; padding: 0.2rem 0.4rem; font-weight: 500;
+}
+.historical-day { color: var(--text-secondary, #94a3b8); }
+
+/* Delegation Table */
+.delegation-table-wrapper { display: flex; flex-direction: column; overflow: hidden; flex-grow: 1; }
+.table-controls { padding-bottom: 0.5rem; display: flex; align-items: center; }
+.entity-switcher { display: flex; background-color: var(--bg-color, #030712); border-radius: 0.375rem; padding: 0.2rem; }
+.switcher-btn {
+    flex-grow: 1;
+    text-align: center;
+    padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: 500;
+    border-radius: 0.25rem; background: none; border: none; color: var(--text-secondary, #94a3b8); cursor: pointer;
+}
+.switcher-btn.active { background-color: var(--accent-blue, #2563eb); color: white; }
+
+.table-container { overflow: auto; flex-grow: 1; }
+#delegation-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+#delegation-table th, #delegation-table td { padding: 0.4rem 0.5rem; text-align: center; white-space: nowrap; }
+#delegation-table thead th {
+    background-color: var(--surface-color, #111827); font-weight: 600; font-size: 0.65rem; text-transform: uppercase;
+    color: var(--text-secondary, #94a3b8); position: sticky; top: 0;
+    border-bottom: 2px solid var(--border-color, #374151); z-index: 2;
+}
+#delegation-table tbody tr { border-bottom: 1px solid var(--border-color, #374151); transition: background-color 0.1s; }
+#delegation-table tbody tr:not(.daily-breakdown):hover { background-color: var(--surface-muted, #1f2937); }
+
+
+#delegation-table tbody .col-entity:hover { background-color: var(--surface-muted, #1f2937); }
+.col-rank-score, .col-efficiency { font-weight: 600; text-align: center; }
+.col-numeric { text-align: center; }
+.col-percent { text-align: center; color: var(--text-secondary, #94a3b8); font-size: 0.75rem;}
+.col-proj-leads { background-color: rgba(37, 99, 235, 0.15); font-weight: 700; color: var(--text-accent, #60a5fa); }
+/* Add this new rule for the sticky header */
+#delegation-table thead .col-entity {
+    z-index: 3;
+}
+
+/* Replace with this rule */
+#delegation-table th:nth-child(2), 
+#delegation-table td:nth-child(2),
+.th-group, 
+.td-group-start {
+    border-left: 2px solid #4b5563; /* Use the slightly lighter border highlight color */
+}
+.efficiency-high { color: #22c55e; } /* Values near 1.0 are now green */
+.efficiency-medium { color: #facc15; } /* Values moderately far from 1.0 are yellow */
+.efficiency-low { color: #ef4444; } /* Values very far from 1.0 are red */
+
+.expand-btn { cursor: pointer; color: var(--text-secondary, #94a3b8); transition: color 0.2s; margin-left: 4px; display: inline-block; width: 1em;}
+.expand-btn:hover { color: var(--text-primary, #e2e8f0); }
+.daily-breakdown { display: none; }
+.daily-breakdown.visible { display: table-row; }
+.breakdown-cell { padding: 0.5rem 1rem !important; background-color: var(--bg-color, #030712) !important; }
+.breakdown-grid { display: flex; justify-content: space-around; gap: 1rem; text-align: center; }
+.day-stat .day-label { color: var(--text-secondary, #94a3b8); font-size: 0.65rem; }
+.day-stat .day-value { font-weight: 600; font-size: 0.8rem; }
+#delegation-table .th-group.expanded {
+    background-color: #030712; /* This is your page's main background color */
+    color: #e2e8f0;            /* This is your primary text color */
+}
+
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    height: 100%;
+    width: 100%;
+    padding: 1.25rem; /* This sets the outer margins correctly */
+    gap: 1.00rem;     /* This sets the space between elements */
+    box-sizing: border-box;
+}
+.dashboard-layout .card {
+    padding: 1.00rem; /* Increased padding to create more space */
+}
+/* Add this new rule */
+#delegation-table .col-entity {
+    text-align: left;
+}
+/* Replace with this corrected version */
+.col-entity {
+    font-weight: 600;
+    color: #60a5fa;
+    position: sticky;
+    left: 0;
+    background-color: #111827;
+    /* This adds a 2px wide line on the right side of the element */
+    box-shadow: inset -2px 0 0 0 #4b5563; 
+}
+/* --- DELEGATION SETTINGS MODAL --- */
+.delegation-settings-tab {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #9ca3af; /* text-gray-400 */
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: -2px; /* To align with the bottom border */
+}
+
+.delegation-settings-tab:hover {
+    color: #e5e7eb; /* text-gray-200 */
+}
+
+.delegation-settings-tab.active {
+    color: #60a5fa; /* text-blue-400 */
+    border-bottom-color: #60a5fa; /* text-blue-400 */
+}
+
+/* CORRECTED CODE */
+.delegation-settings-tab-content {
+    animation: fadeIn 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    /* This makes the tab content area fill the available vertical space */
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.delegation-settings-tab-content.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* --- DELEGATION SETTINGS: COLUMN MANAGEMENT --- */
+.visibility-list-item, .contract-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background-color: #1f2937; /* surface-muted */
+    border-radius: 0.375rem;
+    border: 1px solid #374151; /* border-color */
+}
+
+.contract-group-item .group-name {
+    font-weight: 600;
+    color: #e5e7eb; /* text-gray-200 */
+}
+
+.contract-group-item .group-contracts {
+    font-size: 0.75rem;
+    color: #9ca3af; /* text-gray-400 */
+    margin-left: 1rem;
+    flex-grow: 1;
+}
+
+.group-actions button {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.group-actions button:hover {
+    color: #ffffff;
+}
+
+/* Custom Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #374151; /* border-color */
+    transition: .4s;
+    border-radius: 24px;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .toggle-slider {
+    background-color: #2563eb; /* accent-blue */
+}
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+/* --- DELEGATION SETTINGS: ACTIVATION MATRIX --- */
+.matrix-entity-switcher {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    transition: background-color 0.2s;
+}
+
+.matrix-entity-switcher.active {
+    background-color: #374151;
+    color: #ffffff;
+}
+
+#activationMatrixContainer table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px; /* Creates vertical space between rows */
+}
+
+#activationMatrixContainer th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#activationMatrixContainer td {
+    padding: 0.5rem 0.75rem;
+    background-color: #1f2937;
+    border-top: 1px solid #374151;
+    border-bottom: 1px solid #374151;
+}
+
+#activationMatrixContainer td:first-child {
+    font-weight: 600;
+    color: #e5e7eb;
+    border-left: 1px solid #374151;
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+#activationMatrixContainer td:last-child {
+    border-right: 1px solid #374151;
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+#activationMatrixContainer td.matrix-cell {
+    text-align: center;
+}
+
+.targets-table .historical-day-header {
+    color: #60a5fa; 
+}
+/* --- NEW STYLES FOR REDESIGNED ACTIVATION MATRIX --- */
+.company-matrix-section {
+    margin-bottom: 2rem; /* Space between company sections */
+}
+
+.company-matrix-header {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 600; /* font-semibold */
+    color: #e5e7eb; /* text-gray-200 */
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #4b5563; /* border-gray-600 */
+}
+/* --- NEW STYLES FOR ACTIVATION MATRIX COMPANY TABS --- */
+.company-switcher-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #4b5563;
+    padding-bottom: 1rem;
+}
+
+.company-tab-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #9ca3af;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.company-tab-btn:hover {
+    background-color: #374151;
+    color: #e5e7eb;
+}
+
+.company-tab-btn.active {
+    background-color: #2563eb;
+    border-color: #60a5fa;
+    color: #ffffff;
+}
+/* --- NEW STYLES FOR ACTIVATION MATRIX ACTIONS --- */
+.matrix-global-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.matrix-action-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    background-color: transparent;
+    border: 1px solid #4b5563;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.matrix-action-btn:hover {
+    background-color: #374151;
+    color: #e5e7eb;
+}
+
+#activationMatrixContainer .clickable-header {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#activationMatrixContainer .clickable-header:hover {
+    background-color: #374151;
+}
+/* --- FINAL, CORRECTED STICKY HEADER FOR ACTIVATION MATRIX --- */
+
+/* This targets the main content area inside the modal */
+.delegation-settings-modal-main {
+    flex-grow: 1; /* Make this area fill the available space */
+    overflow-y: auto; /* This container will handle its own scrolling if needed */
+    display: flex; /* Use flexbox for its children */
+    flex-direction: column;
+}
+
+/* This is the content area for a specific tab (e.g., "Activation Matrix") */
+.delegation-settings-tab-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Make it fill the space of its tab content parent */
+    overflow: hidden; /* It should not scroll itself */
+}
+
+/* The main container within the "Activation Matrix" tab */
+#activationMatrixContainer {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Let it fill the space of its tab content parent */
+    overflow: hidden; /* It should not scroll either */
+}
+
+/* The div holding the non-scrolling buttons and company tabs */
+.matrix-controls {
+    flex-shrink: 0; /* Prevent this part from shrinking */
+    padding: 0 0.5rem;
+}
+
+/* The div that wraps the table and provides the scrollbar */
+.matrix-table-wrapper {
+    flex-grow: 1; /* Take up all remaining vertical space */
+    overflow: auto; /* THIS IS THE SCROLLING ELEMENT */
+    position: relative; /* Required for sticky positioning */
+    padding: 0 0.5rem;
+}
+
+/* The sticky header for the table */
+.matrix-table-wrapper thead th {
+    position: sticky;
+    top: 0;
+    background-color: #1f2937; /* Solid background to hide content scrolling under it */
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+}
+/* --- DEFINITIVE STICKY HEADER & COLUMN FIX FOR DELEGATION TABLE --- */
+#delegation-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+#delegation-table thead th {
+    position: -webkit-sticky; /* For Safari */
+    position: sticky;
+    background-color: #111827;
+    /* Base z-index for header cells to be above the sticky column body */
+    z-index: 3;
+}
+
+/* Style the first row of the header */
+#delegation-table thead tr:nth-child(1) th {
+    top: 0;
+    border-bottom: 1px solid #374151;
+}
+
+/* Style the second row of the header */
+#delegation-table thead tr:nth-child(2) th {
+    /* Adjust this value if your top header row's height changes */
+    top: 29px; 
+    border-bottom: 2px solid #4b5563;
+}
+
+/* --- First Column Sticky Styles --- */
+
+/* The first header cell (top-left corner) needs the highest stacking order. 
+   We now use the specific .col-entity class to target it. */
+#delegation-table thead th.col-entity {
+    z-index: 4; /* Highest z-index */
+}
+
+/* The data cells in the first column */
+#delegation-table tbody td:first-child {
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    background-color: #111827; /* Match the main background */
+    /* This z-index should be lower than the header's z-index */
+    z-index: 2; 
+}
+/* Fix for sticky column hover lag */
+#delegation-table tbody tr:not(.daily-breakdown):hover > td {
+    background-color: #1f2937;
+}
+
+/* --- Table Header Tooltip Styles --- */
+.th-tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+}
+
+.th-tooltip-icon {
+    color: #9ca3af; /* gray-400 */
+    cursor: help;
+}
+
+.th-tooltip-text {
+    visibility: hidden;
+    width: 280px;
+    background-color: #1f2937; /* gray-800 */
+    color: #d1d5db; /* gray-300 */
+    text-align: left;
+    white-space: normal;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 110; /* Increased z-index */
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid #374151; /* gray-700 */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    font-size: 0.75rem; /* 12px */
+    font-weight: 500;
+    line-height: 1.5;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+/* Arrow for the tooltip */
+.th-tooltip-text::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #1f2937 transparent;
+}
+
+.th-tooltip-container:hover .th-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+#timeToEngageView .table-container {
+    flex-grow: 1;
+    height: 0;
+    max-height: none;
+}
+
+.arrivals-table-container {
+    max-height: 40vh; /* Limits the table height to 40% of the screen height */
+}
+
+/* RECRU. TEST/css/styles.css */
+/* RECRU. TEST/css/styles.css */
+
+/* --- NEW COMPACT RANKING WEIGHTS MODAL STYLES --- */
+#rankingWeightsContainer .weight-group {
+    border-radius: 0.5rem;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    overflow: hidden;
+}
+
+.weight-item-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: #1f2937;
+    transition: background-color 0.15s;
+    border-bottom: 1px solid #374151;
+}
+
+.weight-item-row:last-child {
+    border-bottom: none;
+}
+
+.weight-item-row.is-expandable {
+    cursor: pointer;
+}
+.weight-item-row.is-expandable:hover {
+    background-color: #374151;
+}
+
+.weight-item-row .item-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.weight-item-row .item-icon {
+    width: 1rem;
+    text-align: center;
+    color: #9ca3af;
+}
+.weight-item-row .item-title {
+    font-weight: 500;
+    color: #d1d5db;
+}
+
+.weight-item-row .expander-arrow {
+    color: #6b7280;
+    transition: transform 0.2s ease-in-out;
+}
+.weight-item-row.is-open .expander-arrow {
+    transform: rotate(90deg);
+}
+
+.weight-input-wrapper {
+    position: relative;
+    width: 80px;
+}
+.weight-input-wrapper input {
+    background-color: #111827;
+    border: 1px solid #4b5563;
+    color: #ffffff;
+    border-radius: 0.375rem;
+    padding: 0.4rem 1.75rem 0.4rem 0.5rem;
+    font-family: 'ui-monospace', monospace;
+    font-size: 0.875rem;
+    width: 100%;
+    text-align: right;
+    -moz-appearance: textfield;
+}
+.weight-input-wrapper input::-webkit-outer-spin-button,
+.weight-input-wrapper input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.weight-input-wrapper .percent-sign {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.weight-children-container {
+    padding: 0.75rem 0.75rem 0.75rem 2rem; /* Indented padding */
+    background-color: #111827;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.group-total-display {
+    text-align: right;
+    padding: 0.5rem 1rem 0 0;
+    font-family: 'ui-monospace', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.group-total-display.is-invalid { color: #f87171; }
+.group-total-display.is-valid { color: #4ade80; }
+
+/* --- START: NEW ACCORDION STYLES FOR SETTINGS --- */
+.settings-accordion-item {
+    border: 1px solid #374151;
+    border-radius: 0.5rem;
+    background-color: #1f2937;
+    overflow: hidden;
+}
+.settings-accordion-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e5e7eb;
+    background-color: #1f2937;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.settings-accordion-header:hover {
+    background-color: #374151;
+}
+.settings-accordion-item.is-open > .settings-accordion-header {
+    background-color: #374151;
+    border-bottom: 1px solid #4b5563;
+}
+.accordion-arrow {
+    transition: transform 0.3s ease-in-out;
+}
+.settings-accordion-item.is-open .accordion-arrow {
+    transform: rotate(180deg);
+}
+.settings-accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    padding: 0 1rem;
+}
+.settings-accordion-item.is-open .settings-accordion-content {
+    padding: 1rem;
+    max-height: 1000px; /* Set to a large enough value */
+}
+/* --- END: NEW ACCORDION STYLES FOR SETTINGS --- */
+
+/* --- START: Custom HTML Timeline Styles --- */
+.timeline-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 100px;
+    padding: 20px 0;
+    display: flex;
+    align-items: center;
+}
+
+.timeline-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #4b5563;
+    transform: translateY(-50%);
+}
+
+/* NEW: Styles for hour markers */
+.timeline-hour-marker {
+    position: absolute;
+    top: 50%;
+    height: 10px;
+    width: 1px;
+    background-color: #374151; /* Lighter gray for markers */
+    transform: translate(-50%, -50%);
+}
+
+.timeline-hour-label {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, 20px); /* Position below the line */
+    font-size: 0.7rem;
+    color: #6b7280; /* Dimmer text color */
+}
+
+
+.timeline-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #1f2937;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+/* NEW: Specific colors for above/below dots */
+.timeline-dot.dot-above {
+    background-color: #3b82f6; /* blue-500 */
+}
+.timeline-dot.dot-below {
+    background-color: #ef4444; /* red-500 */
+}
+
+.timeline-dot:hover {
+    transform: scale(1.5);
+}
+.timeline-dot.dot-above:hover {
+    background-color: #60a5fa; /* blue-400 */
+}
+.timeline-dot.dot-below:hover {
+    background-color: #f87171; /* red-400 */
+}
+
+
+.timeline-dot.position-above {
+    top: 50%;
+    transform: translate(-50%, -150%);
+}
+
+.timeline-dot.position-below {
+    top: 50%;
+    transform: translate(-50%, 50%);
+}
+
+.timeline-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    background-color: #111827;
+    color: #e5e7eb;
+    border: 1px solid #6b7280;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 10;
+    min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transform: translateX(-50%);
+}
+
+.timeline-tooltip.visible {
+    visibility: visible;
+    opacity: 1;
+}
+/* --- END: Custom HTML Timeline Styles --- */
+/* RECRU. TEST/css/styles.css */
+
+/* --- START: UPDATED HTML Bar Chart Styles --- */
+#sbChartContainer {
+    overflow-y: auto; /* Add scroll for smaller screens */
+}
+
+.bar-chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Reduced space between rows */
+    padding: 0.5rem 0;
+}
+
+.bar-chart-row {
+    display: grid;
+    /* Adjusted column widths for a tighter look */
+    grid-template-columns: 140px 1fr 35px; 
+    align-items: center;
+    gap: 8px; /* Reduced gap between elements */
+}
+
+.bar-chart-label {
+    text-align: right;
+    font-size: 0.75rem; /* Smaller font */
+    color: #d1d5db;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bar-chart-bar-wrapper {
+    background-color: #374151;
+    border-radius: 3px;
+    height: 16px; /* Reduced bar height */
+}
+
+.bar-chart-bar {
+    height: 100%;
+    background-color: rgba(239, 68, 68, 0.6);
+    border-radius: 3px;
+}
+
+.bar-chart-value {
+    font-size: 0.75rem; /* Smaller font */
+    font-family: 'ui-monospace', monospace;
+    color: #9ca3af;
+}
+/* --- END: HTML Bar Chart Styles --- */
+/* Add this to the end of your styles.css file */
+.copy-header-cell {
+    color: #60a5fa; /* A nice blue color */
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.copy-header-cell:hover {
+    background-color: #374151;
+    color: #ffffff;
+}
+.rank-display {
+    font-size: 0.7rem;
+    color: #9ca3af; /* text-gray-400 */
+    font-weight: 400;
+    margin-left: 8px;
+}
+.breakdown-source-btn {
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+    color: #9ca3af;
+}
+.breakdown-source-btn.active {
+    background-color: #374151;
+    color: #ffffff;
+}
+/* Fix for sticky header in breakdown modal table */
+.details-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #374151; /* Ensures it has a solid background */
+    z-index: 10;
+}
+
+/* New layout for the table header content */
+.details-table-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+/* Tooltip for the breakdown data source switcher */
+.breakdown-source-btn-wrapper {
+    position: relative; /* Establishes a positioning context for the tooltip */
+}
+
+.breakdown-tooltip-text {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    top: 100%; /* Position it directly below the button */
+    left: -30%;
+    transform: translateX(-50%); /* Center it horizontally */
+    margin-top: 8px; /* Add some space */
+    width: 220px; /* Set a fixed width */
+    background-color: #1f2937;
+    color: #d1d5db;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    z-index: 100;
+    transition: opacity 0.2s;
+    pointer-events: none; /* Prevents the tooltip from blocking mouse events */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 1px solid #374151;
+}
+
+.breakdown-source-btn-wrapper:hover .breakdown-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+/* --- NEW: Company-Specific Colors for Delegation View --- */
+
+/* --- AmongUs Colors (Cyan) --- */
+#delegation-table th.company-color-amongus {
+    color: #22d3ee;
+}
+#delegation-table tr.company-color-amongus td.breakdown-cell {
+    background-color: rgba(34, 211, 238, 0.07) !important;
+    border-top: 1px solid rgba(34, 211, 238, 0.2);
+    border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+/* --- EB Infinity Colors (Blue) --- */
+#delegation-table th.company-color-eb-infinity {
+    color: #60a5fa;
+}
+#delegation-table tr.company-color-eb-infinity td.breakdown-cell {
+    background-color: rgba(96, 165, 250, 0.07) !important;
+    border-top: 1px solid rgba(96, 165, 250, 0.2);
+    border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+/* --- SMJ Colors (Amber) --- */
+#delegation-table th.company-color-smj {
+    color: #f59e0b;
+}
+#delegation-table tr.company-color-smj td.breakdown-cell {
+    background-color: rgba(245, 158, 11, 0.07) !important;
+    border-top: 1px solid rgba(245, 158, 11, 0.2);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* Text colors for the table headers */
+#delegation-table .th-group.contract-color-1 { color: #34d399; } /* Emerald */
+#delegation-table .th-group.contract-color-2 { color: #fbbf24; } /* Amber */
+#delegation-table .th-group.contract-color-3 { color: #f87171; } /* Red */
+#delegation-table .th-group.contract-color-4 { color: #818cf8; } /* Indigo */
+#delegation-table .th-group.contract-color-5 { color: #fb7185; } /* Rose */
+
+/* Background colors for the expanded detail rows */
+tr.contract-color-1 td.breakdown-cell { background-color: rgba(52, 211, 153, 0.07) !important; border-top: 1px solid rgba(52, 211, 153, 0.2); border-bottom: 1px solid rgba(52, 211, 153, 0.2); }
+tr.contract-color-2 td.breakdown-cell { background-color: rgba(251, 191, 36, 0.07) !important; border-top: 1px solid rgba(251, 191, 36, 0.2); border-bottom: 1px solid rgba(251, 191, 36, 0.2); }
+tr.contract-color-3 td.breakdown-cell { background-color: rgba(248, 113, 113, 0.07) !important; border-top: 1px solid rgba(248, 113, 113, 0.2); border-bottom: 1px solid rgba(248, 113, 113, 0.2); }
+tr.contract-color-4 td.breakdown-cell { background-color: rgba(129, 140, 248, 0.07) !important; border-top: 1px solid rgba(129, 140, 248, 0.2); border-bottom: 1px solid rgba(129, 140, 248, 0.2); }
+tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.07) !important; border-top: 1px solid rgba(251, 113, 133, 0.2); border-bottom: 1px solid rgba(251, 113, 133, 0.2); }

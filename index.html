@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecruiterHub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="antialiased bg-gray-950 h-screen overflow-hidden">
+
+    <div id="loadingScreen" class="fixed inset-0 bg-gray-950 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+        <img src="https://i.postimg.cc/Gpg0F5R9/logo.png" alt="logo" border="0" class="w-24 h-24 pulsate">
+        <h1 class="text-3xl font-bold mt-2 pulsate"><span class="text-white">Recruiter</span><span class="text-blue-500">Hub</span></h1>
+    </div>
+
+    <div class="flex h-full">
+        <aside id="mainSidebar" class="sidebar w-64 bg-gray-900 p-4 border-r border-gray-700 flex flex-col">
+            <header class="sidebar-header flex items-center justify-center gap-3 pb-4 border-b border-gray-700">
+                <img src="https://i.postimg.cc/Gpg0F5R9/logo.png" alt="logo" border="0" class="w-8 h-8 shrink-0">
+                <h1 class="text-xl font-bold logo-text overflow-hidden"><span class="text-white">Recruiter</span><span class="text-blue-500">Hub</span></h1>
+            </header>
+            <nav id="sidebarNav" class="flex-grow py-4 space-y-2 overflow-y-auto">
+                <button id="navDelegation" class="main-nav-btn" title="Delegate leads or tasks"><i class="fas fa-hands-helping"></i><span class="nav-text">Delegation</span></button>
+                <button id="navRankings" class="main-nav-btn" title="View performance rankings"><i class="fas fa-trophy"></i><span class="nav-text">Rankings</span></button>
+                <button id="navLeadAssignment" class="main-nav-btn" title="Analyze lead assignment data"><i class="fas fa-user-plus"></i><span class="nav-text">Lead Assignment</span></button>
+                <button id="navLeadRisk" class="main-nav-btn active" title="Identify at-risk leads based on activity"><i class="fas fa-exclamation-triangle"></i><span class="nav-text">Lead Risk</span></button>
+                <button id="navWorkingHours" class="main-nav-btn" title="Analyze activity by time of day"><i class="fas fa-clock"></i><span class="nav-text">Working Hours</span></button>
+                <button id="navPastDue" class="main-nav-btn" title="View past due accounts"><i class="fas fa-calendar-times"></i><span class="nav-text">Past Due</span></button>
+                <button id="navArrivals" class="main-nav-btn" title="Track arrivals and drug tests"><i class="fas fa-plane-arrival"></i><span class="nav-text">Arrivals</span></button>
+                <button id="navTimeToEngage" class="main-nav-btn" title="Analyze time to first engagement"><i class="fas fa-user-clock"></i><span class="nav-text">Time to Engage</span></button>
+                <button id="navSwitchboard" class="main-nav-btn" title="Analyze recruiter phone switching"><i class="fas fa-random"></i><span class="nav-text">Switchboard</span></button>
+            </nav>
+            <footer class="pt-4 border-t border-gray-700 shrink-0">
+                <button id="collapseBtn" class="main-nav-btn w-full justify-center" title="Collapse or expand the sidebar"><i id="collapseIcon" class="fas fa-angles-left"></i><span class="nav-text">Collapse</span></button>
+            </footer>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto">
+            <div id="rankingsView" class="hidden space-y-4 p-4 md:p-6">
+                <div class="control-deck p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch between profiler, recruiter and team rankings">
+                        <button id="rankingsProfilerModeBtn" class="view-toggle-btn px-3 py-2 text-sm font-semibold rounded-md">Profiler</button> 
+                        <button id="rankingsRecruiterModeBtn" class="view-toggle-btn active px-3 py-2 text-sm font-semibold rounded-md">Recruiter</button>
+                        <button id="rankingsTeamModeBtn" class="view-toggle-btn px-3 py-2 text-sm font-semibold rounded-md">Team</button>
+                    </div>
+
+                    <div id="rankingsTeamFilterContainer" class="flex-1 min-w-[150px] relative" title="Filter by one or more teams">
+                        <label for="rankingsTeamFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Team</label>
+                        <button id="rankingsTeamFilterBtn" class="w-full control-deck-select text-left text-sm">All Teams</button>
+                        <div id="rankingsTeamFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+
+                    <div class="flex-1 min-w-[150px] relative" title="Filter by one or more companies">
+                        <label for="rankingsCompanyFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Company</label>
+                        <button id="rankingsCompanyFilterBtn" class="w-full control-deck-select text-left text-sm">All Companies</button>
+                        <div id="rankingsCompanyFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+
+                    <div class="flex-1 min-w-[150px] relative" title="Filter by one or more contract types">
+                        <label for="rankingsContractFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Contract</label>
+                        <button id="rankingsContractFilterBtn" class="w-full control-deck-select text-left text-sm">All Contracts</button>
+                        <div id="rankingsContractFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+
+                    <div class="flex items-end gap-2 ml-auto">
+                        <div title="Select the start date for the ranking period"><label for="rankingsDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="rankingsDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                        <div title="Select the end date for the ranking period"><label for="rankingsDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="rankingsDateToFilter" class="w-full control-deck-input text-sm"></div>
+                        <button id="rankingsSettingsBtn" class="icon-btn" title="Configure advanced ranking settings"><i class="fas fa-cog"></i></button>
+                        <button id="rankingWeightsBtn" class="icon-btn" title="Adjust the weights of ranking categories"><i class="fas fa-sliders-h"></i></button>
+                        <div class="help-tooltip-container">
+                            <i class="fas fa-question-circle help-tooltip-icon"></i>
+                            <div class="help-tooltip-text tooltip-align-right">
+                                <h5>How Rankings Work</h5>
+                                <p>Rankings are calculated dynamically based on the filters you select. Only the data matching your filters is used for calculations.</p>
+                                <p><b>1. Filtering & Aggregation:</b> Data is filtered by date, team, company, and contract. Then, all stats are summed up for each recruiter or team.</p>
+                                <p><b>2. Exclusion Rules:</b> Entities that don't meet the minimum thresholds you set in "Advanced Settings" are removed.</p>
+                                <p><b>3. Scoring:</b> For the remaining entities, performance metrics (like Active Days, TTE, etc.) are calculated. Each entity is then given a percentile score (0-100) for each metric by comparing them to everyone else in the filtered group.</p>
+                                <p><b>4. Final Score:</b> The percentile scores are combined into weighted sub-scores (Effort, Compliance, Arrivals) and then into a final weighted score based on the values in "Ranking Weights".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-container">
+                        <table class="min-w-full text-sm text-left">
+                            <thead class="sticky top-0 z-10" id="rankingsTableHeader">
+                            </thead>
+                            <tbody id="rankingsTableBody" class="divide-y divide-gray-800"></tbody>
+                            <tfoot class="border-t-2 border-gray-600"><tr id="rankingsTableFooter"></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="leadAssignmentView" class="hidden space-y-6 p-4 md:p-6">
+                <div class="control-deck p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div class="flex-1 min-w-[150px]"><label for="laRecruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="laRecruiterFilter" class="w-full control-deck-select text-sm" title="Filter by recruiter"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="laTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="laTeamFilter" class="w-full control-deck-select text-sm" title="Filter by team"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="laCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="laCompanyFilter" class="w-full control-deck-select text-sm" title="Filter by company"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="laContractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract</label><select id="laContractFilter" class="w-full control-deck-select text-sm" title="Filter by contract type"></select></div>
+                    <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch between daily data (Stub) and summarized data (Aggregated)">
+                        <button id="laViewStubBtn" class="view-toggle-btn px-3 py-2 text-sm font-semibold rounded-md">Day</button>
+                        <button id="laViewAggregatedBtn" class="view-toggle-btn active px-3 py-2 text-sm font-semibold rounded-md">Aggregated</button>
+                    </div>
+                    <div class="flex items-end gap-2 ml-auto">
+                        <div title="Select the start date"><label for="laDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="laDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                        <div title="Select the end date"><label for="laDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="laDateToFilter" class="w-full control-deck-input text-sm"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div class="lg:col-span-3">
+                        <div class="table-wrapper lead-assignment-table">
+                            <div class="table-container">
+                                <table class="min-w-full text-sm text-left">
+                                    <thead class="sticky top-0 z-10"><tr id="laTableHeader"></tr></thead>
+                                    <tbody id="laTableBody" class="divide-y divide-gray-800"></tbody>
+                                    <tfoot class="border-t-2 border-gray-600"><tr id="laTableFooter"></tr></tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="card p-4 h-[23rem] flex flex-col">
+                            <h3 class="text-base font-semibold text-white mb-2 shrink-0">Historical Assignment Trend</h3>
+                            <div class="flex-grow relative"><canvas id="laTrendChart"></canvas></div>
+                        </div>
+                        <div class="card p-4 h-[23rem] flex flex-col">
+                            <div class="flex justify-between items-center mb-2 shrink-0">
+                                <h3 class="text-base font-semibold text-white">Lead Distribution</h3>
+                                <div id="laCarouselDots"></div>
+                            </div>
+                            <div id="laDistributionCarousel" class="chart-carousel-container flex-grow relative">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="leadRiskView" class="p-4 md:p-6">
+                <div class="control-deck mb-4 p-3 bg-gray-900/50 flex items-center gap-4 flex-wrap">
+                    <div class="tooltip-container">
+                        <button id="filtersBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-md text-sm transition-colors flex items-center gap-2" title="Show or hide the main filter panel">
+                            <i class="fas fa-filter"></i>Filters<i class="fas fa-chevron-down ml-2 transition-transform rotate-180"></i>
+                        </button>
+                        <div class="tooltip-text align-left"><b>Main Display Filters:</b> These controls filter the data visible in the main table below. Rule calculations are NOT affected by these filters unless a rule condition is explicitly set to 'vs Current View'.</div>
+                    </div>
+                    <div class="h-6 w-px bg-gray-700"></div>
+                    <div class="flex items-center gap-2" title="Select a detection profile">
+                        <label for="profilesDropdown" class="text-sm font-medium text-gray-400">Profile:</label>
+                        <select id="profilesDropdown" class="control-deck-select text-sm w-48 py-1.5"></select>
+                        <button id="settingsBtn" title="Edit the current detection profile" class="icon-btn text-sm py-1.5"><i class="fas fa-cogs"></i></button>
+                    </div>
+                    <div class="h-6 w-px bg-gray-700"></div>
+                    <div class="flex items-center gap-2" title="Switch between daily data (Stub) and summarized data (Aggregated)">
+                        <div class="flex items-center p-0.5 bg-gray-800 rounded-md">
+                             <button id="viewStubBtn" class="view-toggle-btn px-3 py-1 text-sm font-semibold rounded-md">Day</button>
+                             <button id="viewAggregatedBtn" class="view-toggle-btn active px-3 py-1 text-sm font-semibold rounded-md">Aggregated</button>
+                        </div>
+                    </div>
+                    <div class="ml-auto flex items-center gap-2">
+                        <div id="rowCount" class="text-sm text-gray-400 mr-2"></div>
+                         <div class="relative">
+                            <button id="columnToggleBtn" title="Show or hide table columns" class="icon-btn text-sm"><i class="fas fa-eye"></i></button>
+                            <div id="columnToggleDropdown" class="hidden absolute right-0 z-20 mt-2 w-80 rounded-lg shadow-2xl bg-gray-800 ring-1 ring-gray-600 p-4 transform scale-95 opacity-0">
+                               <h4 class="text-base font-semibold text-white mb-3">Visible Columns</h4>
+                               <div id="columnCheckboxes" class="grid grid-cols-2 gap-x-6 gap-y-2"></div>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="filtersPanel" class="filters-panel mb-4 p-4 bg-gray-800/60">
+                    <div class="flex flex-wrap items-end gap-4">
+                        <div class="flex-1 min-w-[150px]"><label for="recruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="recruiterFilter" class="w-full control-deck-select text-sm" title="Filter by recruiter"></select></div>
+                        <div class="flex-1 min-w-[150px]"><label for="teamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="teamFilter" class="w-full control-deck-select text-sm" title="Filter by team"></select></div>
+                        <div class="flex-1 min-w-[150px]"><label for="companyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="companyFilter" class="w-full control-deck-select text-sm" title="Filter by company"></select></div>
+                        <div class="flex-1 min-w-[150px]"><label for="contractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract Type</label><select id="contractFilter" class="w-full control-deck-select text-sm" title="Filter by contract type"></select></div>
+                        <div class="flex items-end gap-2">
+                            <div title="Select the start date"><label for="dateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="dateFromFilter" class="w-full control-deck-input text-sm"></div>
+                            <div title="Select the end date"><label for="dateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="dateToFilter" class="w-full control-deck-input text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <div class="table-container">
+                        <table class="min-w-full text-sm text-left">
+                            <thead class="sticky top-0 z-10"><tr id="tableHeader"></tr></thead>
+                            <tbody id="tableBody" class="divide-y divide-gray-800"></tbody>
+                            <tfoot class="border-t-2 border-gray-600"><tr id="tableFooter"></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="workingHoursView" class="hidden space-y-6 p-4 md:p-6">
+                <div class="control-deck p-3 bg-gray-900/50 flex items-end gap-x-4 gap-y-2 flex-wrap">
+                     <div class="flex-1 min-w-[150px]"><label for="whRecruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="whRecruiterFilter" class="w-full control-deck-select text-sm" title="Filter by recruiter"></select></div>
+                     <div class="flex-1 min-w-[150px]"><label for="whTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="whTeamFilter" class="w-full control-deck-select text-sm" title="Filter by team"></select></div>
+                     <div class="flex-1 min-w-[150px]"><label for="whCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="whCompanyFilter" class="w-full control-deck-select text-sm" title="Filter by company"></select></div>
+                     <div class="flex-1 min-w-[150px]"><label for="whCallTypeFilter" class="block text-xs font-medium text-gray-400 mb-1">Call Type</label><select id="whCallTypeFilter" class="w-full control-deck-select text-sm" title="Filter by call type"></select></div>
+                     <div class="flex-1 min-w-[150px]"><label for="whCallStatusFilter" class="block text-xs font-medium text-gray-400 mb-1">Call Status</label><select id="whCallStatusFilter" class="w-full control-deck-select text-sm" title="Filter by call status"></select></div>
+                     <div class="flex-1 min-w-[150px]"><label for="whSmsTypeFilter" class="block text-xs font-medium text-gray-400 mb-1">SMS Type</label><select id="whSmsTypeFilter" class="w-full control-deck-select text-sm" title="Filter by SMS type"></select></div>
+                     <div class="flex-1 min-w-[150px]"><label for="whSmsStatusFilter" class="block text-xs font-medium text-gray-400 mb-1">SMS Status</label><select id="whSmsStatusFilter" class="w-full control-deck-select text-sm" title="Filter by SMS status"></select></div>
+                     <div class="flex items-end gap-2 ml-auto">
+                         <div title="Select the start date"><label for="whDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="whDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                         <div class="h-6 w-px bg-gray-700 self-center"></div>
+                         <div title="Select the end date"><label for="whDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="whDateToFilter" class="w-full control-deck-input text-sm"></div>
+                     </div>
+                 </div>
+                <div class="card bg-gray-900/50 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-white">Weekly Activity Heatmap</h3>
+                        <div class="relative" title="Select data type for heatmap"><select id="heatmapDataTypeSelect" class="control-deck-select text-sm"><option value="all">All Activity</option><option value="calls">Calls Only</option><option value="sms">SMS Only</option></select></div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <div id="heatmapContainer" class="heatmap-grid" title="Click a cell to see top performers for that hour"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="card h-96 flex flex-col p-4">
+                        <div class="flex justify-between items-center px-2 pb-2 border-b border-gray-800 shrink-0">
+                            <h3 id="topPerformersHeadline" class="text-base font-semibold text-white">Top Performers</h3>
+                            <select id="topPerformersViewSelect" class="control-deck-select text-sm !py-1 pl-2 pr-8" title="Switch between daily and hourly performers">
+                                <option value="by_hour">By Hour</option>
+                                <option value="by_day">By Day</option>
+                            </select>
+                        </div>
+                        <div id="topPerformersContent" class="overflow-y-auto px-2 flex-grow"><p class="text-gray-400 text-sm pt-4">Select a slot on the heatmap to see details.</p></div>
+                    </div>
+                    <div class="card h-96 flex flex-col p-4">
+                        <div class="flex justify-between items-center px-2 pb-2 border-b border-gray-800 shrink-0">
+                            <h3 class="text-base font-semibold text-white">Activity by Hour</h3>
+                            <select id="hourlyActivityDayFilter" class="control-deck-select text-sm !py-1 !px-2" title="Filter activity by day of the week">
+                                <option value="">All Days</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                                <option value="0">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="flex-grow relative"><canvas id="hourlyActivityChart"></canvas></div>
+                    </div>
+                    <div class="card h-96 flex flex-col p-4">
+                        <div class="flex justify-between items-center px-2 pb-2 border-b border-gray-800 shrink-0">
+                            <h3 id="activityInsightsHeadline" class="text-base font-semibold text-white">Activity Insights</h3>
+                            <select id="insightChartSelect" class="control-deck-select text-sm !py-1 !px-2" title="Select a chart to view"></select>
+                        </div>
+                        <div class="flex-grow flex items-center justify-center relative pt-2"><canvas id="futureChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="delegationView" class="hidden h-full">
+                 <div class="dashboard-layout">
+                    <div class="main-content-area">
+                        <header id="targets-card" class="card targets-card">
+                            <table class="targets-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-contract-name">Contract / Group</th><th>Daily Target</th>
+                                        </tr>
+                                   </thead>
+                                   <tbody>
+                                       <tr>
+                                           <td class="col-contract-name"><strong>LOO Group</strong></td>
+                                           <td><input type="number" class="target-input" value="150"></td>
+                                           <td class="historical-day">135</td><td class="historical-day">128</td><td class="historical-day">140</td><td class="historical-day">110</td><td class="historical-day">115</td>
+                                           <td class="historical-day">120</td><td class="historical-day">130</td><td class="historical-day">122</td><td class="historical-day">125</td><td class="historical-day">125</td>
+                                       </tr>
+                                       <tr>
+                                           <td class="col-contract-name"><strong>MCLOO</strong></td>
+                                           <td><input type="number" class="target-input" value="100"></td>
+                                           <td class="historical-day">90</td><td class="historical-day">85</td><td class="historical-day">92</td><td class="historical-day">88</td><td class="historical-day">80</td>
+                                           <td class="historical-day">84</td><td class="historical-day">95</td><td class="historical-day">87</td><td class="historical-day">88</td><td class="historical-day">89</td>
+                                       </tr>
+                                       <tr>
+                                           <td class="col-contract-name"><strong>TCPM</strong></td>
+                                           <td><input type="number" class="target-input" value="50"></td>
+                                           <td class="historical-day">45</td><td class="historical-day">41</td><td class="historical-day">38</td><td class="historical-day">44</td><td class="historical-day">40</td>
+                                           <td class="historical-day">42</td><td class="historical-day">48</td><td class="historical-day">39</td><td class="historical-day">43</td><td class="historical-day">40</td>
+                                       </tr>
+                                   </tbody>
+                               </table>
+                        </header>
+                        <main class="delegation-table-wrapper card">
+                            <div class="table-container">
+                                <table id="delegation-table"></table>
+                            </div>
+                        </main>
+                    </div>
+
+                    <aside class="right-control-panel">
+                        <div class="control-group">
+                            <label>View</label>
+                            <div class="view-switcher">
+                                <button class="view-btn" data-view="master"><i class="fa fa-globe"></i> Master View</button>
+                                <button class="view-btn active" data-view="company_a"><i class="fa fa-building"></i> Company A</button>
+                                <button class="view-btn" data-view="company_b"><i class="fa fa-building"></i> Company B</button>
+                                <button class="view-btn" data-view="company_c"><i class="fa fa-building"></i> Company C</button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Entity Type</label>
+                               <div class="entity-switcher">
+                                   <button class="switcher-btn active" data-entity="team">Team</button>
+                                   <button class="switcher-btn" data-entity="profiler">Profiler</button>
+                               </div>
+                        </div>
+                        <div id="date-filters" class="control-group">
+                            <label>Performance Dates</label>
+                            <div class="date-filters">
+                                <input type="date" value="2025-06-28">
+                                <input type="date" value="2025-07-04">
+                            </div>
+                        </div>
+                        <button class="settings-btn" title="Delegation Settings">
+                            <i class="fa fa-cog"></i> Settings
+                        </button>
+                    </aside>
+                </div>
+            </div>
+
+            <div id="pastDueView" class="hidden p-4 md:p-6 flex flex-col h-full gap-6">
+                <div class="control-deck p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-3 flex-shrink-0">
+                    <div id="pdRecruiterFilterContainer" class="flex-1 min-w-[150px] relative">
+                        <label for="pdRecruiterFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label>
+                        <button id="pdRecruiterFilterBtn" class="w-full control-deck-select text-left text-sm">All Recruiters</button>
+                        <div id="pdRecruiterFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+                    <div class="flex-1 min-w-[150px] relative">
+                        <label for="pdTeamFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Team</label>
+                        <button id="pdTeamFilterBtn" class="w-full control-deck-select text-left text-sm">All Teams</button>
+                        <div id="pdTeamFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+                    <div class="flex-1 min-w-[150px] relative">
+                        <label for="pdCompanyFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Company</label>
+                        <button id="pdCompanyFilterBtn" class="w-full control-deck-select text-left text-sm">All Companies</button>
+                        <div id="pdCompanyFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+                    <div class="flex-1 min-w-[150px] relative">
+                        <label for="pdContractFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Contract</label>
+                        <button id="pdContractFilterBtn" class="w-full control-deck-select text-left text-sm">All Contracts</button>
+                        <div id="pdContractFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+                    <div class="flex items-end gap-2 ml-auto">
+                        <div title="Select the start date"><label for="pdDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="pdDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                        <div title="Select the end date"><label for="pdDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="pdDateToFilter" class="w-full control-deck-input text-sm"></div>
+                    </div>
+                </div>
+
+                <div class="card overflow-hidden flex flex-col flex-grow">
+                    <div class="flex items-center justify-between p-4 border-b border-gray-800 flex-shrink-0">
+                         <div class="flex items-center">
+                            <h3 class="text-lg font-semibold text-white">Performance Breakdown</h3>
+                            <div class="help-tooltip-container ml-2">
+                                <i class="fas fa-question-circle help-tooltip-icon"></i>
+                                <div class="help-tooltip-text tooltip-align-left" style="width: 280px;">
+                                    <p>This table shows the <strong>median</strong> daily lead status counts for each entity based on the selected 'From' and 'To' date range.</p>
+                                </div>
+                            </div>
+                         </div>
+                         <div class="flex items-center p-0.5 bg-gray-800 rounded-md">
+                            <button id="pdViewRecruiterBtn" class="view-toggle-btn active px-3 py-1 text-sm font-semibold rounded-md">Recruiter</button>
+                            <button id="pdViewTeamBtn" class="view-toggle-btn px-3 py-1 text-sm font-semibold rounded-md">Team</button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto h-0 flex-grow">
+                        <table class="min-w-full text-sm text-left">
+                            <thead id="pastDueTableHeader" class="sticky top-0 z-10">
+                            </thead>
+                            <tbody id="pastDueTableBody" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-shrink-0">
+                    <div class="card p-4 lg:col-span-2">
+                        <div class="flex items-center mb-2">
+                            <h3 class="text-base font-semibold text-white">Data Overview</h3>
+                            <div class="help-tooltip-container ml-2">
+                                <i class="fas fa-question-circle help-tooltip-icon text-xs"></i>
+                                <div class="help-tooltip-text tooltip-align-left" style="width: 300px;">
+                                    <h5>About This View</h5>
+                                    <p>This chart visualizes data captured daily from the backend, based on the selected 'From' and 'To' date range.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="h-48 relative"><canvas id="pastDueChart"></canvas></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 grid-rows-2 gap-4">
+                        <div class="card p-3 flex items-center">
+                            <div class="bg-red-500/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-times fa-lg text-red-400"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-400">Total Past Due</div>
+                                <div id="kpiTotalPastDue" class="text-xl font-bold text-white">0</div>
+                            </div>
+                        </div>
+                        <div class="card p-3 flex items-center">
+                            <div class="bg-blue-500/20 p-2 rounded-lg mr-3"><i class="fas fa-headset fa-lg text-blue-400"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-400">Total Contacted</div>
+                                <div id="kpiTotalContacted" class="text-xl font-bold text-white">0</div>
+                            </div>
+                        </div>
+                        <div class="card p-3 flex items-center">
+                            <div class="bg-gray-500/20 p-2 rounded-lg mr-3"><i class="fas fa-hourglass-half fa-lg text-gray-400"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-400">Not Due Yet</div>
+                                <div id="kpiTotalNotDueYet" class="text-xl font-bold text-white">0</div>
+                            </div>
+                        </div>
+                        <div class="card p-3 flex items-center">
+                            <div class="bg-amber-500/20 p-2 rounded-lg mr-3"><i class="fas fa-percentage fa-lg text-amber-400"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-400">Past Due Ratio</div>
+                                <div id="kpiPastDueRatio" class="text-xl font-bold text-white">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            <div id="arrivalsView" class="hidden space-y-6 p-4 md:p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                    <div class="card p-4 flex items-center">
+                        <div class="bg-blue-500/20 p-3 rounded-lg mr-4"><i class="fas fa-plane-arrival fa-2x text-blue-400"></i></div>
+                        <div>
+                            <div class="text-sm text-gray-400">Total Arrivals</div>
+                            <div id="kpiTotalArrivals" class="text-2xl font-bold text-white">0</div>
+                        </div>
+                    </div>
+                    <div class="card p-4 flex items-center">
+                        <div class="bg-green-500/20 p-3 rounded-lg mr-4"><i class="fas fa-vial-circle-check fa-2x text-green-400"></i></div>
+                        <div>
+                            <div class="text-sm text-gray-400">Total Drug Tests</div>
+                            <div id="kpiTotalDrugTests" class="text-2xl font-bold text-white">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-3 flex flex-wrap items-end gap-x-4 gap-y-3">
+                    <div class="flex-1 min-w-[150px]"><label for="arrivalsRecruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="arrivalsRecruiterFilter" class="w-full control-deck-select" title="Filter by recruiter"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="arrivalsTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="arrivalsTeamFilter" class="w-full control-deck-select" title="Filter by team"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="arrivalsCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="arrivalsCompanyFilter" class="w-full control-deck-select" title="Filter by company"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="arrivalsContractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract</label><select id="arrivalsContractFilter" class="w-full control-deck-select" title="Filter by contract type"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="arrivalsDrugTestFilter" class="block text-xs font-medium text-gray-400 mb-1">Drug Test Type</label><select id="arrivalsDrugTestFilter" class="w-full control-deck-select" title="Filter by drug test type"></select></div>
+                    <div class="flex items-end gap-2 ml-auto">
+                        <div title="Select the start date"><label for="arrivalsDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="arrivalsDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                        <div title="Select the end date"><label for="arrivalsDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="arrivalsDateToFilter" class="w-full control-deck-input text-sm"></div>
+                    </div>
+                </div>
+
+                <div class="card overflow-hidden flex flex-col flex-grow arrivals-table-container">
+                    <div class="flex-grow overflow-y-auto">
+                        <table class="min-w-full text-sm text-left">
+                            <thead class="sticky top-0 z-10"><tr id="arrivalsTableHeader"></tr></thead>
+                            <tbody id="arrivalsTableBody" class="divide-y divide-gray-800"></tbody>
+                            <tfoot class="border-t-2 border-gray-600"><tr id="arrivalsTableFooter"></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                     <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-white">Weekly Performance</h3>
+                    </div>
+                    <div class="h-56 relative"><canvas id="arrivalsChart"></canvas></div>
+                </div>
+            </div>
+
+            <div id="timeToEngageView" class="hidden p-4 md:p-6 flex flex-col h-full">
+                <div class="control-deck mb-4 p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div class="flex-1 min-w-[150px]"><label for="tteRecruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="tteRecruiterFilter" class="w-full control-deck-select text-sm" title="Filter by recruiter"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="tteTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="tteTeamFilter" class="w-full control-deck-select text-sm" title="Filter by team"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="tteCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="tteCompanyFilter" class="w-full control-deck-select text-sm" title="Filter by company"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="tteContractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract</label><select id="tteContractFilter" class="w-full control-deck-select text-sm" title="Filter by contract type"></select></div>
+                    <div class="flex-1 min-w-[100px]"><label for="tteLeadTypeFilter" class="block text-xs font-medium text-gray-400 mb-1">Lead Type</label><select id="tteLeadTypeFilter" class="w-full control-deck-select text-sm" title="Filter by lead type"><option value="total">All</option><option value="new">New</option><option value="old">Old</option></select></div>
+                    <div class="bg-gray-800 rounded-md" title="Switch between daily data (Stub) and summarized data (Average)">
+                        <button id="tteViewStubBtn" class="view-toggle-btn px-2 py-2.5 text-sm font-semibold rounded-md">Day</button>
+                        <button id="tteViewAverageBtn" class="view-toggle-btn active px-2 py-2.5 text-sm font-semibold rounded-md">Average</button>
+                    </div>
+                    <div class="flex items-end gap-2 ml-auto">
+                        <div title="Select the start date"><label for="tteDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="tteDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                        <div class="h-6 w-px bg-gray-700 self-center"></div>
+                        <div title="Select the end date"><label for="tteDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="tteDateToFilter" class="w-full control-deck-input text-sm"></div>
+                    </div>
+                </div>
+                <div class="table-wrapper flex-grow">
+                    <div class="table-container">
+                        <table class="min-w-full text-sm text-left">
+                            <thead class="sticky top-0 z-10"><tr id="tteTableHeader"></tr></thead>
+                            <tbody id="tteTableBody" class="divide-y divide-gray-800"></tbody>
+                            <tfoot class="border-t-2 border-gray-600"><tr id="tteTableFooter"></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="switchboardView" class="hidden space-y-6 p-4 md:p-6 flex flex-col h-full">
+                <div class="control-deck p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div class="flex-1 min-w-[150px]"><label for="sbRecruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="sbRecruiterFilter" class="w-full control-deck-select text-sm"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="sbTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="sbTeamFilter" class="w-full control-deck-select text-sm"></select></div>
+                    <div class="flex-1 min-w-[150px]"><label for="sbCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="sbCompanyFilter" class="w-full control-deck-select text-sm"></select></div>
+                    <div class="flex items-end gap-2 ml-auto">
+                        <div><label for="sbDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="sbDateFromFilter" class="w-full control-deck-input text-sm"></div>
+                        <div><label for="sbDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="sbDateToFilter" class="w-full control-deck-input text-sm"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="card p-4"><div class="text-sm text-gray-400">Total Switches</div><div id="kpiTotalSwitches" class="text-2xl font-bold text-white">0</div></div>
+                    <div class="card p-4"><div class="text-sm text-gray-400">Most Active Switcher</div><div id="kpiTopSwitcher" class="text-2xl font-bold text-white">-</div></div>
+                    <div class="card p-4"><div class="text-sm text-gray-400">Avg. Calls/Switch</div><div id="kpiAvgCallsPerSwitch" class="text-2xl font-bold text-white">0</div></div>
+                </div>
+                <div class="table-wrapper flex-grow flex flex-col overflow-hidden">
+                    <div class="table-container h-full overflow-y-auto">
+                        <table class="min-w-full text-sm text-left">
+                            <thead class="sticky top-0 z-10"><tr id="sbTableHeader"></tr></thead>
+                            <tbody id="sbTableBody" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="sbChartRow" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div id="teamChartCard" class="card p-4 md:col-span-3">
+                        <h3 id="sbTeamChartTitle" class="text-lg font-semibold text-white mb-4"></h3>
+                        <div id="sbTeamChartContainer" class="h-56 relative"></div>
+                    </div>
+                    <div id="timelineCard" class="card p-4 md:col-span-2 hidden">
+                        <h3 id="sbTimelineChartTitle" class="text-lg font-semibold text-white mb-4"></h3>
+                        <div id="sbTimelineChartContainer" class="h-56 relative"></div>
+                    </div>
+                    <div id="phoneUsageCard" class="card p-4 md:col-span-1 hidden">
+                         <h3 id="sbPhoneUsageChartTitle" class="text-lg font-semibold text-white mb-4"></h3>
+                        <div id="sbPhoneUsageChartContainer" class="h-56 relative">
+                            <canvas id="recruiterPhoneUsageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    
+    <div id="rankingWeightsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-sliders-h text-blue-400 text-xl"></i>
+                    <h3 id="rankingWeightsModalTitle" class="text-xl font-semibold text-white">Ranking Weights</h3>
+                </div>
+                <button id="closeRankingWeightsBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
+            </header>
+            <main class="flex-grow p-4 space-y-2 overflow-y-auto" id="rankingWeightsContainer">
+                 </main>
+            <footer class="p-4 bg-gray-900 border-t border-gray-700 flex justify-between items-center flex-shrink-0">
+                <button id="resetRankingWeightsBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm transition-colors" title="Reset all weights to their default values">Reset to Defaults</button>
+                <div id="weightsErrorMsg" class="text-sm text-red-400 font-medium"></div>
+                <button id="saveRankingWeightsBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md text-sm transition-colors" title="Save changes and close">Apply & Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="rankingsSettingsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <!-- START: MODIFIED HEADER -->
+            <header class="flex justify-between items-center p-4 border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-cogs text-blue-400 text-xl"></i>
+                    <h3 id="rankingsSettingsModalTitle" class="text-xl font-semibold text-white">Advanced Settings</h3>
+                </div>
+                <button id="closeRankingsSettingsBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
+            </header>
+            <main class="flex-grow p-6 overflow-y-auto">
+                 <div class="flex border-b border-gray-700 mb-4">
+                    <button data-section="activeDayRulesSection" class="settings-nav-btn active !rounded-b-none -mb-px border-b-2 border-blue-500 px-4 py-2 text-sm font-medium text-white">Active Day Rules</button>
+                    <button data-section="secondaryFiltersSection" class="settings-nav-btn !rounded-b-none -mb-px border-b-2 border-transparent px-4 py-2 text-sm font-medium text-gray-400 hover:border-gray-500 hover:text-gray-200">Secondary Filters</button>
+                    <button data-section="exclusionRulesSection" class="settings-nav-btn !rounded-b-none -mb-px border-b-2 border-transparent px-4 py-2 text-sm font-medium text-gray-400 hover:border-gray-500 hover:text-gray-200">Exclusion Rules</button>
+                </div>
+                <div id="activeDayRulesSection" class="settings-section space-y-4">
+                    <div>
+                        <h4 class="text-lg font-semibold text-white">Active Day Thresholds</h4>
+                        <p class="text-sm text-gray-400 mt-1">A day is counted as "active" if a recruiter meets a certain number of conditions. Set different thresholds for work days and weekends.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-gray-800/50 rounded-lg space-y-3">
+                            <h5 class="text-base font-semibold text-white">Work Days (Mon-Fri)</h5>
+                            <div class="flex items-center gap-4">
+                                <label for="workday_activeDayConditions" class="text-sm font-medium whitespace-nowrap">Conditions to meet:</label>
+                                <select id="workday_activeDayConditions" class="modal-select w-24" title="Number of conditions below that must be met for a work day to be 'active'">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="workday_minCalls" class="block text-xs font-medium text-gray-400 mb-1">Min Calls</label>
+                                <input type="number" id="workday_minCalls" class="modal-input w-full" min="0" title="Minimum total calls on a work day">
+                            </div>
+                            <div>
+                                <label for="workday_minDuration" class="block text-xs font-medium text-gray-400 mb-1">Min Duration (min)</label>
+                                <input type="number" id="workday_minDuration" class="modal-input w-full" min="0" title="Minimum total call duration on a work day">
+                            </div>
+                            <div>
+                                <label for="workday_minSms" class="block text-xs font-medium text-gray-400 mb-1">Min SMS</label>
+                                <input type="number" id="workday_minSms" class="modal-input w-full" min="0" title="Minimum total SMS sent on a work day">
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-gray-800/50 rounded-lg space-y-3">
+                            <h5 class="text-base font-semibold text-white">Weekends (Sat-Sun)</h5>
+                            <div class="flex items-center gap-4">
+                                <label for="weekend_activeDayConditions" class="text-sm font-medium whitespace-nowrap">Conditions to meet:</label>
+                                <select id="weekend_activeDayConditions" class="modal-select w-24" title="Number of conditions below that must be met for a weekend day to be 'active'">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="weekend_minCalls" class="block text-xs font-medium text-gray-400 mb-1">Min Calls</label>
+                                <input type="number" id="weekend_minCalls" class="modal-input w-full" min="0" title="Minimum total calls on a weekend day">
+                            </div>
+                            <div>
+                                <label for="weekend_minDuration" class="block text-xs font-medium text-gray-400 mb-1">Min Duration (min)</label>
+                                <input type="number" id="weekend_minDuration" class="modal-input w-full" min="0" title="Minimum total call duration on a weekend day">
+                            </div>
+                            <div>
+                                <label for="weekend_minSms" class="block text-xs font-medium text-gray-400 mb-1">Min SMS</label>
+                                <input type="number" id="weekend_minSms" class="modal-input w-full" min="0" title="Minimum total SMS sent on a weekend day">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="secondaryFiltersSection" class="settings-section hidden space-y-3">
+
+                    <!-- Accordion Item 1: Metric Calculations -->
+                    <div class="settings-accordion-item" data-accordion-key="metricCalculations">
+                        <button class="settings-accordion-header">
+                            <span>Metric Calculations</span>
+                            <i class="fas fa-chevron-down accordion-arrow"></i>
+                        </button>
+                        <div class="settings-accordion-content">
+                            <p class="text-sm text-gray-400 mb-3">Choose which metrics to calculate as a "per lead" average. Unchecked items will be calculated as totals.</p>
+                            <div id="perLeadMetricsContainer" class="p-4 bg-gray-800/50 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- Accordion Item 2: Call & SMS Data Source -->
+                    <div class="settings-accordion-item" data-accordion-key="callSmsSource">
+                        <button class="settings-accordion-header">
+                            <span>Call & SMS Data Source</span>
+                            <i class="fas fa-chevron-down accordion-arrow"></i>
+                        </button>
+                        <div class="settings-accordion-content">
+                            <p class="text-sm text-gray-400 mb-3">Choose which calls/SMS to use for ranking metrics. 'Active Days' always uses data from all leads.</p>
+                            <div class="p-4 bg-gray-800/50 rounded-lg">
+                                <label for="callSmsDataSource" class="block text-sm font-medium text-gray-400 mb-1">Data Source</label>
+                                <select id="callSmsDataSource" class="modal-select w-full" title="Choose the data source for call and SMS metrics">
+                                    <option value="all">All Leads</option>
+                                    <option value="assigned_on_date">Leads Assigned on Date</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- Accordion Item 3: Leads Reached -->
+                    <div class="settings-accordion-item" data-accordion-key="leadsReached">
+                                <button class="settings-accordion-header">
+                                    <span>Leads Reached</span>
+                                    <i class="fas fa-chevron-down accordion-arrow"></i>
+                                </button>
+                                <div class="settings-accordion-content">
+                            <p class="text-sm text-gray-400 mb-3">Which lead type should be used to calculate "Leads Reached"?</p>
+                            <div class="p-4 bg-gray-800/50 rounded-lg space-y-4">
+                            
+                                <div id="leadsReachedSourceContainer">
+                                    <label for="leadsReachedSource" class="block text-sm font-medium text-gray-400 mb-1">Lead Category</label>
+                                    <select id="leadsReachedSource" class="modal-select w-full" title="Choose between standard and hot leads">
+                                        <option value="standard">Standard Leads</option>
+                                        <option value="hot">Hot Leads</option>
+                                    </select>
+                                </div>
+                                <div id="leadsReachedSourceProfilerContainer" style="display: none;">
+                                    <label for="leadsReachedSourceProfiler" class="block text-sm font-medium text-gray-400 mb-1">Lead Category</label>
+                                    <select id="leadsReachedSourceProfiler" class="modal-select w-full" title="Choose between standard and fresh leads">
+                                        <option value="standard">Standard Leads</option>
+                                        <option value="fresh">Fresh Leads</option>
+                                    </select>
+                                </div>
+                                <div id="leadsReachedLeadTypeContainer">
+                                    <label for="leadsReachedLeadType" class="block text-sm font-medium text-gray-400 mb-1">Standard Lead Type</label>
+                                    <select id="leadsReachedLeadType" class="modal-select w-full" title="Choose which standard lead type to use">
+                                        <option value="total">All</option>
+                                        <option value="new">New</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- Accordion Item 4: Time to Engage (TTE) -->
+                    <div class="settings-accordion-item" data-accordion-key="tte">
+                        <button class="settings-accordion-header">
+                            <span>Time to Engage (TTE)</span>
+                            <i class="fas fa-chevron-down accordion-arrow"></i>
+                        </button>
+                        <div class="settings-accordion-content">
+                            <p class="text-sm text-gray-400 mb-3">Select which TTE percentile and lead type to use for ranking.</p>
+                            <div class="p-4 bg-gray-800/50 rounded-lg space-y-4">
+                                
+                                <div id="tteSourceContainer">
+                                    <label for="tteSource" class="block text-sm font-medium text-gray-400 mb-1">Lead Category</label>
+                                    <select id="tteSource" class="modal-select w-full" title="Choose between standard and hot leads">
+                                        <option value="standard">Standard Leads</option>
+                                        <option value="hot">Hot Leads</option>
+                                    </select>
+                                </div>
+                                <div id="tteSourceProfilerContainer" style="display: none;">
+                                    <label for="tteSourceProfiler" class="block text-sm font-medium text-gray-400 mb-1">Lead Category</label>
+                                    <select id="tteSourceProfiler" class="modal-select w-full" title="Choose between standard and fresh leads">
+                                        <option value="standard">Standard Leads</option>
+                                        <option value="fresh">Fresh Leads</option>
+                                    </select>
+                                </div>
+                                <div id="tteLeadTypeContainer">
+                                    <label for="tteLeadType" class="block text-sm font-medium text-gray-400 mb-1">Standard Lead Type</label>
+                                    <select id="tteLeadType" class="modal-select w-full" title="Choose the lead type for the TTE compliance score">
+                                        <option value="total">All</option>
+                                        <option value="new">New</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                                 <div>
+                                    <label for="ttePercentileSelect" class="block text-sm font-medium text-gray-400 mb-1">TTE Percentile</label>
+                                    <select id="ttePercentileSelect" class="modal-select w-full" title="Choose the TTE percentile for the compliance score">
+                                        <option value="p10">P10</option><option value="p20">P20</option><option value="p30">P30</option>
+                                        <option value="p40">P40</option><option value="p50">P50 (Median)</option><option value="p60">P60</option>
+                                        <option value="p70">P70</option><option value="p80">P80</option><option value="p90">P90</option>
+                                        <option value="p100">P100</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- Accordion Item 5: Drug Test Filter -->
+                    <div class="settings-accordion-item" data-accordion-key="drugTest">
+                        <button class="settings-accordion-header">
+                            <span>Drug Test Filter</span>
+                            <i class="fas fa-chevron-down accordion-arrow"></i>
+                        </button>
+                        <div class="settings-accordion-content">
+                            <p class="text-sm text-gray-400 mb-3">Select which type of drug tests to include in the rankings.</p>
+                            <div class="p-4 bg-gray-800/50 rounded-lg">
+                                <label for="rankingsDrugTestFilter" class="block text-sm font-medium text-gray-400 mb-1">Drug Test Type</label>
+                                <select id="rankingsDrugTestFilter" class="modal-select w-full" title="Choose which drug test types to include in the arrivals score"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-accordion-item" data-accordion-key="medianCallDuration">
+                        <button class="settings-accordion-header">
+                            <span>Median Call Duration</span>
+                            <i class="fas fa-chevron-down accordion-arrow"></i>
+                        </button>
+                        <div class="settings-accordion-content">
+                            <p class="text-sm text-gray-400 mb-3">Choose which data source to use for the 'Median Call Duration' metric.</p>
+                            <div class="p-4 bg-gray-800/50 rounded-lg">
+                                <label for="medianCallDurationSource" class="block text-sm font-medium text-gray-400 mb-1">Data Source</label>
+                                <select id="medianCallDurationSource" class="modal-select w-full" title="Choose the data source for Median Call Duration">
+                                    <option value="all_leads">All Leads</option>
+                                    <option value="assigned_on_date">Leads Assigned on Date</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                
+                </div>
+                
+                 <div id="exclusionRulesSection" class="settings-section hidden space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-lg font-semibold text-white">Minimum Activity Thresholds</h4>
+                            <div class="flex items-center gap-2" title="Choose how multiple rules are applied">
+                                <span class="text-sm font-medium text-gray-400">Logic:</span>
+                                <div class="flex items-center p-0.5 bg-gray-800 rounded-md">
+                                     <button id="exclusionLogicAND" data-logic="AND" class="exclusion-logic-btn view-toggle-btn px-3 py-1 text-sm font-semibold rounded-md">AND</button>
+                                     <button id="exclusionLogicOR" data-logic="OR" class="exclusion-logic-btn view-toggle-btn px-3 py-1 text-sm font-semibold rounded-md">OR</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-1">Entities that meet these criteria will be excluded from the ranking calculations.</p>
+                    </div>
+                    <div id="exclusionRulesContainer" class="space-y-3 p-4 bg-gray-800/50 rounded-lg">
+                        </div>
+                    <button id="addExclusionRuleBtn" class="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center gap-2" title="Add a new exclusion rule"><i class="fas fa-plus-circle"></i> Add Exclusion Rule</button>
+                </div>
+            </main>
+            <footer class="p-4 bg-gray-900 border-t border-gray-700 text-right">
+                <button id="saveRankingsSettingsBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md text-sm transition-colors" title="Save all changes and close the settings window">Apply & Close</button>
+            </footer>
+        </div>
+    </div>
+    
+    <div id="chartModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h3 id="chartModalTitle" class="text-xl font-semibold text-white">Historical Trend</h3>
+                <div class="flex items-center gap-4">
+                    <select id="chartContractFilter" class="chart-modal-select" title="Filter chart data by contract type"></select>
+                    <select id="chartCompanyFilter" class="chart-modal-select" title="Filter chart data by company"></select>
+                    <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch chart view between daily and aggregated data">
+                        <button id="chartViewStubBtn" class="chart-toggle-btn active px-2 py-0.5 text-xs font-semibold rounded-[5px]">Stub</button>
+                        <button id="chartViewAggregatedBtn" class="chart-toggle-btn px-2 py-0.5 text-xs font-semibold rounded-[5px]">Aggregated</button>
+                    </div>
+                    <button id="closeChartModalBtn" class="text-gray-400 hover:text-white text-2xl" title="Close chart window">&times;</button>
+                </div>
+            </header>
+            <main class="p-4 flex-grow relative"><canvas id="trendChart"></canvas></main>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col ring-1 ring-gray-700 overflow-hidden">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700 flex-shrink-0">
+                <div id="modalHeaderContent" class="flex items-center gap-3">
+                    <i class="fas fa-cogs text-blue-400 text-xl"></i>
+                    <h3 id="modalProfileTitle" class="text-xl font-semibold text-white">Edit Detector Profile</h3>
+                    <div id="createProfileInputWrapper" class="hidden"><input type="text" id="newProfileNameInput" class="modal-input w-72" placeholder="Enter New Profile Name..."></div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="setDefaultProfileBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-1.5 px-4 rounded-md text-sm transition-colors flex items-center gap-2" title="Set the current profile as the default one to load on startup"><i class="far fa-star"></i> Set as Default</button>
+                    <button id="applyAndSaveBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded-md text-sm transition-colors flex items-center gap-2" title="Save changes to this profile"><i class="fas fa-check"></i> Apply & Save</button>
+                    <div class="h-6 w-px bg-gray-700"></div>
+                    <div class="relative">
+                        <button id="profileActionsBtn" title="More Actions" class="icon-btn py-1.5 px-2.5"><i class="fas fa-ellipsis-v"></i></button>
+                        <div id="profileActionsDropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 overflow-hidden">
+                            <button id="duplicateProfileBtn" class="flex items-center gap-3 w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors" title="Create a copy of this profile">
+                                <i class="far fa-copy w-4"></i> Duplicate Profile
+                            </button>
+                            <button id="deleteProfileBtn" class="flex items-center gap-3 w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors" title="Delete this profile">
+                                <i class="far fa-trash-alt w-4"></i> Delete Profile
+                            </button>
+                        </div>
+                    </div>
+                    <button id="closeSettingsModalBtn" class="text-gray-400 hover:text-white text-2xl ml-2" title="Close window">&times;</button>
+                </div>
+            </header>
+            <div class="flex flex-grow overflow-hidden">
+                <aside class="w-1/4 xl:w-1/5 bg-gray-900 p-4 border-r border-gray-700 overflow-y-auto">
+                    <nav class="space-y-2">
+                        <a href="#profile-settings" class="settings-nav-btn active"><i class="fas fa-user-circle"></i><span>Profile Settings</span></a>
+                        <a href="#rules-settings" class="settings-nav-btn"><i class="fas fa-exclamation-triangle"></i><span>Detection Rules</span></a>
+                    </nav>
+                </aside>
+                <main class="w-3/4 xl:w-4/5 flex flex-col overflow-hidden">
+                    <div class="flex-grow overflow-y-auto p-6 space-y-8">
+                        <div id="profile-settings" class="settings-section space-y-6">
+                             <div>
+                                <div class="flex items-center mb-3">
+                                    <h4 class="text-lg font-semibold text-white">Default View Filters</h4>
+                                    <div class="tooltip-container"><i class="fas fa-question-circle tooltip-icon"></i><div class="tooltip-text align-left"><b>Profile Filters:</b> These controls filter the data visible in the main screen when this profile is loaded. They do NOT affect rule calculations.</div></div>
+                                </div>
+                                <div class="p-4 bg-gray-800/50 rounded-lg grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div><label for="modalTeamFilter" class="block text-sm font-medium text-gray-400 mb-1">Team</label><select id="modalTeamFilter" class="w-full control-deck-select text-sm" title="Set a default team filter for this profile"></select></div>
+                                    <div><label for="modalCompanyFilter" class="block text-sm font-medium text-gray-400 mb-1">Company</label><select id="modalCompanyFilter" class="w-full control-deck-select text-sm" title="Set a default company filter for this profile"></select></div>
+                                    <div><label for="modalContractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract Type</label><select id="modalContractFilter" class="w-full control-deck-select text-sm" title="Set a default contract type filter for this profile"></select></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="rules-settings" class="settings-section hidden">
+                             <div class="flex justify-between items-center mb-4">
+                                 <h4 class="text-lg font-semibold text-white">Detection Rules</h4>
+                                 <button id="addRuleBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-md text-sm flex items-center justify-center space-x-2 transition-colors" title="Add a new detection rule"><i class="fas fa-plus"></i><span>Add New Rule</span></button>
+                             </div>
+                             <div id="rulesContainer" class="space-y-4"></div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <div id="heatmapTooltip" class="hidden absolute z-50 p-2 text-xs text-white bg-gray-900/80 rounded-md shadow-lg pointer-events-none backdrop-blur-sm ring-1 ring-gray-700/50"></div>
+
+    <div id="detailedBreakdownModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col ring-1 ring-gray-700 breakdown-modal-content">
+            <header class="breakdown-header">
+                <button id="breakdownPrevBtn" class="breakdown-nav-btn" title="Previous in Rank"><i class="fas fa-chevron-left"></i></button>
+                <div class="text-center">
+                    <h3 id="breakdownTitle" class="text-xl font-semibold text-white"></h3>
+                    <p id="breakdownRank" class="text-sm text-gray-400"></p>
+                </div>
+                <button id="breakdownNextBtn" class="breakdown-nav-btn" title="Next in Rank"><i class="fas fa-chevron-right"></i></button>
+                <button id="closeBreakdownBtn" class="absolute top-2 right-3 text-gray-400 hover:text-white text-2xl">&times;</button>
+            </header>
+            
+            <nav class="breakdown-tabs">
+                <button class="breakdown-tab-btn active" data-tab="effort">Effort</button>
+                <button class="breakdown-tab-btn" data-tab="compliance">Compliance</button>
+                <button class="breakdown-tab-btn" data-tab="arrivals">Arrivals</button>
+            </nav>
+
+            <main class="breakdown-body">
+                <div id="tab-content-effort" class="breakdown-tab-content active">
+                    <div class="kpi-grid" id="kpi-effort"></div>
+                    <div class="breakdown-content-grid">
+                        <div id="carousel-effort" class="chart-carousel-container"></div>
+                        <div class="details-table-container">
+                            <div class="details-table-wrapper">
+                                <table id="table-effort" class="details-table"></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-content-compliance" class="breakdown-tab-content hidden">
+                    <div class="kpi-grid" id="kpi-compliance"></div>
+                    <div class="breakdown-content-grid">
+                        <div id="carousel-compliance" class="chart-carousel-container"></div>
+                        <div class="details-table-container">
+                             <div class="details-table-wrapper">
+                                <table id="table-compliance" class="details-table"></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-content-arrivals" class="breakdown-tab-content hidden">
+                    <div class="kpi-grid" id="kpi-arrivals"></div>
+                    <div class="breakdown-content-grid">
+                        <div id="carousel-arrivals" class="chart-carousel-container"></div>
+                         <div class="details-table-container">
+                             <div class="details-table-wrapper">
+                                <table id="table-arrivals" class="details-table"></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/app.js" type="module"></script>
+    <div id="delegationSettingsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-cogs text-blue-400 text-xl"></i>
+                    <h3 class="text-xl font-semibold text-white">Delegation Settings</h3>
+                </div>
+                <button id="closeDelegationSettingsBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
+            </header>
+
+            <main class="flex-grow p-6 flex flex-col overflow-hidden">
+                <nav class="flex border-b border-gray-700 mb-4 flex-shrink-0">
+                    <button data-tab="columns" class="delegation-settings-tab active">
+                        <i class="fas fa-columns"></i> Column & Group Management
+                    </button>
+                    <button data-tab="activation" class="delegation-settings-tab">
+                        <i class="fas fa-toggle-on"></i> Activation Matrix
+                    </button>
+                </nav>
+
+                <div class="flex-grow overflow-y-auto">
+                    <div id="tab-content-columns" class="delegation-settings-tab-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-lg font-semibold text-white">Contract Groups</h4>
+                                    <button id="addNewGroupBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-md text-sm flex items-center gap-2 transition-colors">
+                                        <i class="fas fa-plus"></i> Add New Group
+                                    </button>
+                                </div>
+                                <div id="contractGroupsContainer" class="p-4 bg-gray-800/50 rounded-lg space-y-3">
+                                    <p class="text-gray-500 text-sm">Click "Add New Group" to begin.</p>
+                                </div>
+                            </div>
+                    
+                            <div class="space-y-4">
+                                <h4 class="text-lg font-semibold text-white">Visible Columns</h4>
+                                <div id="columnVisibilityContainer" class="p-4 bg-gray-800/50 rounded-lg space-y-3">
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-content-activation" class="delegation-settings-tab-content hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-semibold text-white">Activation Matrix</h4>
+                            <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch between Team and Profiler view">
+                                <button data-entity="team" class="matrix-entity-switcher active px-3 py-1 text-sm font-semibold rounded-md">Team View</button>
+                                <button data-entity="profiler" class="matrix-entity-switcher px-3 py-1 text-sm font-semibold rounded-md">Profiler View</button>
+                            </div>
+                        </div>
+                        <div id="activationMatrixContainer" class="overflow-auto">
+                            </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="p-4 bg-gray-900 border-t border-gray-700 text-right space-x-3 flex-shrink-0">
+                <button id="saveDelegationSettingsBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md text-sm transition-colors">Save & Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <script src="js/app.js" type="module"></script>
+</body>
+</html>
+</body>
+</html>
