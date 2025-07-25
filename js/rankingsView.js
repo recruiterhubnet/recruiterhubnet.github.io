@@ -647,6 +647,13 @@ const getSelectedValues = (dropdownEl) => {
 export function initializeRankingsView() {
     if (isInitialized) return;
 
+    // --- FIX: Remove conflicting sticky classes from the <thead> element ---
+    const tableHeader = document.getElementById('rankingsTableHeader');
+    if (tableHeader) {
+        tableHeader.classList.remove('sticky', 'top-0', 'z-10');
+    }
+    // --- END OF FIX ---
+
     const savedSettings = localStorage.getItem('rankingSettings');
     if (savedSettings && savedSettings !== 'undefined') {
         try {
@@ -1507,7 +1514,14 @@ function renderRankingsHeaders() {
         const sortClasses = isSorted ? `sorted-${sortDir}` : '';
         const alignClass = conf.type === 'number' ? 'text-center' : 'text-left';
 
-        return `<th scope="col" class="table-header-cell sortable ${sortClasses} ${extraClass} ${conf.colorClass || ''} py-1 px-1.5 ${alignClass} cursor-pointer" rowspan="${rowspan}" colspan="${colspan}" data-sort-key="${key}">
+        // --- sticky classes to the first 3 base columns ---
+        let stickyClasses = '';
+        if (key === 'rank') stickyClasses = 'th-sticky sticky-col-1';
+        if (key === 'name') stickyClasses = 'th-sticky sticky-col-2';
+        if (key === 'team') stickyClasses = 'th-sticky sticky-col-3';
+        // --- FIX END ---
+
+        return `<th scope="col" class="table-header-cell sortable ${sortClasses} ${extraClass} ${stickyClasses} ${conf.colorClass || ''} py-1 px-1.5 ${alignClass} cursor-pointer" rowspan="${rowspan}" colspan="${colspan}" data-sort-key="${key}">
             <div class="flex items-center ${alignClass === 'text-center' ? 'justify-center' : ''}">
                 <span>${conf.label}</span>
                 <span class="sort-icon sort-icon-up ml-1"><i class="fas fa-arrow-up"></i></span>
@@ -1613,6 +1627,12 @@ function renderRankingsTable(data) {
             let value = row[key];
             let cellClass = 'py-1.5 px-1.5 whitespace-nowrap';
 
+            // --- FIX START: Add sticky classes to the data cells ---
+            if (key === 'rank') cellClass += ' td-sticky sticky-col-1';
+            if (key === 'name') cellClass += ' td-sticky sticky-col-2';
+            if (key === 'team') cellClass += ' td-sticky sticky-col-3';
+            // --- FIX END ---
+
             let isNumber = typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)) && isFinite(value));
             const isPerLeadMetric = perLeadSettings[key];
 
@@ -1658,7 +1678,7 @@ function renderRankingsTable(data) {
 
             return `<td class="${cellClass}">${value}</td>`;
         }).join('');
-        return `<tr class="table-body-row hover:bg-gray-800/50 transition-colors" data-entity-index="${index}">${cells}</tr>`;
+        return `<tr class="table-body-row" data-entity-index="${index}">${cells}</tr>`;
     }).join('');
 }
 
@@ -1710,6 +1730,12 @@ function renderRankingsFooter(data) {
     const footerCellsHtml = columnsInOrder.map((key) => {
         let cellContent = '';
         let cellClasses = 'py-1 px-1.5';
+
+        // --- FIX START: Add sticky classes to the footer cells ---
+        if (key === 'rank') cellClasses += ' td-sticky sticky-col-1';
+        if (key === 'name') cellClasses += ' td-sticky sticky-col-2';
+        if (key === 'team') cellClasses += ' td-sticky sticky-col-3';
+        // --- FIX END ---
 
         if (key === 'name') {
             cellContent = `
