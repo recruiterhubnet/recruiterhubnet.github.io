@@ -1669,3 +1669,7 @@ tr.contract-color-2 td.breakdown-cell { background-color: rgba(251, 191, 36, 0.0
 tr.contract-color-3 td.breakdown-cell { background-color: rgba(248, 113, 113, 0.07) !important; border-top: 1px solid rgba(248, 113, 113, 0.2); border-bottom: 1px solid rgba(248, 113, 113, 0.2); }
 tr.contract-color-4 td.breakdown-cell { background-color: rgba(129, 140, 248, 0.07) !important; border-top: 1px solid rgba(129, 140, 248, 0.2); border-bottom: 1px solid rgba(129, 140, 248, 0.2); }
 tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.07) !important; border-top: 1px solid rgba(251, 113, 133, 0.2); border-bottom: 1px solid rgba(251, 113, 133, 0.2); }
+/* --- NEW: Company-Specific Text Colors for Breakdown --- */
+.company-color-text-amongus { color: #22d3ee; }
+.company-color-text-eb-infinity { color: #60a5fa; }
+.company-color-text-smj { color: #f59e0b; }
