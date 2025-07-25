@@ -15,7 +15,7 @@ function formatPhoneNumber(phoneStr) {
     if (match) {
         return `+${match[1]} (${match[2]}) ${match[3]}-${match[4]}`;
     }
-    return phoneStr;
+    return phoneStr
 }
 
 function copySwitchboardData(recruiter, team, totalCalls, totalSwitches, switchRate, avgCallsPerSwitch) {
@@ -219,14 +219,6 @@ export function renderAllSwitchboard() {
 }
 
 function renderKPIs(data) {
-    const totalSwitches = data.reduce((sum, item) => sum + item.totalSwitches, 0);
-    const topSwitcherData = [...data].sort((a, b) => b.totalSwitches - a.totalSwitches);
-    const topSwitcher = topSwitcherData.length > 0 ? topSwitcherData[0] : { recruiter: '-', totalSwitches: 0 };
-    const totalCalls = data.reduce((sum, item) => sum + item.totalCalls, 0);
-    const avgCallsPerSwitch = totalSwitches > 0 ? totalCalls / totalSwitches : 0;
-    document.getElementById('kpiTotalSwitches').textContent = formatNumber(totalSwitches, 0);
-    document.getElementById('kpiTopSwitcher').textContent = `${topSwitcher.recruiter} (${formatNumber(topSwitcher.totalSwitches, 0)})`;
-    document.getElementById('kpiAvgCallsPerSwitch').textContent = formatNumber(avgCallsPerSwitch, 1);
 }
 
 function renderTable(data) {
