@@ -25,6 +25,25 @@ const state = {
     }
 };
 
+function generateProjectedLeadsBreakdownString(companyBreakdowns) {
+    const breakdownParts = [];
+    const sortedCompanies = Object.keys(companyBreakdowns).sort();
+
+    for (const company of sortedCompanies) {
+        const contracts = companyBreakdowns[company]
+            .filter(b => b.projLeads > 0) // Only show contracts with projected leads
+            .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+
+        if (contracts.length > 0) {
+            // This line adds the new color class to the company name
+            const companyClass = `company-color-text-${company.toLowerCase().replace(/\s+/g, '-')}`;
+            breakdownParts.push(`<span class="font-semibold ${companyClass}">${company}:</span> ${contracts.join(', ')}`);
+        }
+    }
+    // This line creates a more separated look
+    return breakdownParts.join('<span class="mx-4 text-gray-700 font-light">|</span>');
+}
+
 // --- SETTINGS PERSISTENCE ---
 function saveSettings() {
     localStorage.setItem('delegationSettings', JSON.stringify(state.settings));
@@ -748,20 +767,35 @@ function renderMasterView() {
     finalData.forEach((item, index) => {
         const efficiencyClass = getEfficiencyClass(item.efficiency);
         const entityObject = entities.find(e => e.name === item.entity);
-        
+        const projectedLeadsBreakdown = generateProjectedLeadsBreakdownString(item.companyBreakdowns);
+    
         let mainRowHTML = `<tr>
             <td class="col-entity">${item.entity}</td>
             <td class="col-rank-score">${item.rank.toFixed(1)}%</td>
             <td class="col-numeric"><strong>${Math.round(item.totalDailyLeads)}</strong></td>
-            <td class="col-numeric"><strong>${item.totalProjectedLeads}</strong></td>
+            <td class="col-numeric expand-cell">
+                <strong>${item.totalProjectedLeads}</strong>
+                ${projectedLeadsBreakdown ? `<i class="fas fa-plus-circle fa-xs expand-btn ml-1" data-target="master-proj-leads-breakdown-${index}" title="Show projected leads breakdown by contract"></i>` : ''}
+            </td>
             <td class="col-efficiency ${efficiencyClass}">${item.efficiency.toFixed(2)}</td>`;
-
-        let breakdownRowsHTML = '';
+    
+        let allBreakdownRowsHTML = '';
+    
+        // Add the new projected leads breakdown row first if it exists
+        if (projectedLeadsBreakdown) {
+                allBreakdownRowsHTML += `<tr class="daily-breakdown" id="master-proj-leads-breakdown-${index}">
+                <td colspan="${5 + companies.length}" class="breakdown-cell" style="text-align: center; font-size: 0.75rem; white-space: normal; padding: 0.5rem 1rem !important;">
+                    ${projectedLeadsBreakdown}
+                </td>
+            </tr>`;
+        }
+    
+        // Add the existing company-specific breakdown rows
         companies.forEach(c => {
             const companyMatrix = state.activation.matrix[c] || {};
             const isEntityActiveForCompany = entityObject && item.companyBreakdowns[c] && item.companyBreakdowns[c].length > 0;
             const companyClass = `company-color-${c.toLowerCase().replace(/\s+/g, '-')}`;
-
+    
             if (isEntityActiveForCompany) {
                 const leads = item.companyLeads[c] || 0;
                 const share = companyTotals[c] > 0 ? (leads / companyTotals[c]) * 100 : 0;
@@ -769,8 +803,8 @@ function renderMasterView() {
             } else {
                 mainRowHTML += `<td class="col-numeric">-</td>`;
             }
-
-            breakdownRowsHTML += `<tr class="daily-breakdown ${companyClass}" id="master-breakdown-${index}-${c.replace(/\s+/g, '-')}">
+    
+            allBreakdownRowsHTML += `<tr class="daily-breakdown ${companyClass}" id="master-breakdown-${index}-${c.replace(/\s+/g, '-')}">
                 <td colspan="${5 + companies.length}" class="breakdown-cell">
                     <div class="breakdown-grid">
                         ${(item.companyBreakdowns[c] || []).map(breakdownItem => {
@@ -784,9 +818,9 @@ function renderMasterView() {
                 </td>
             </tr>`;
         });
-        
+    
         mainRowHTML += `</tr>`;
-        bodyHTML += mainRowHTML + breakdownRowsHTML;
+        bodyHTML += mainRowHTML + allBreakdownRowsHTML;
     });
     bodyHTML += `</tbody>`;
 
@@ -1299,4 +1333,8 @@ export function initializeDelegationView() {
 
     delegationView.querySelector('#targets-card').style.display = state.currentView === 'master' ? 'none' : 'block';
     delegationView.querySelector('#date-filters').style.visibility = state.currentView === 'master' ? 'hidden' : 'visible';
+}
+export function rerenderDelegationView() {
+    calculateAndCacheAllData();
+    renderTable();
 }
