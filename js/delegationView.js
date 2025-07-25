@@ -412,9 +412,7 @@ function renderActivationMatrix(entityType = 'team') {
 
     let tableHTML = '';
     if (selectedCompany) {
-        const companyContracts = allContracts.filter(c =>
-            appState.allData.some(d => d.company_name === selectedCompany && d.contract_type === c.name)
-        );
+        const companyContracts = allContracts;
         const companyGroups = allGroups.filter(g =>
             g.contractIds.some(cId => {
                 const contractInGroup = allContracts.find(c => c.id === cId);
@@ -656,17 +654,33 @@ function renderMasterView() {
                 
                 const dailyTarget = companyTargets[item.id] || 0;
                 const itemRanks = contractSpecificRanks.get(item.id) || new Map();
-                const eligibleEntities = entities.filter(e => companyMatrix[`${e.id}_${item.id}`] !== false && itemRanks.has(e.name));
+                const eligibleEntities = entities.filter(e => {
+                    const matrixKey = `${e.id}_${item.id}`;
+                    return companyMatrix[matrixKey] !== false;
+                });
+                
                 const totalRankScoreForItem = eligibleEntities.reduce((sum, e) => sum + (itemRanks.get(e.name) || 0), 0);
                 
-                if (totalRankScoreForItem > 0) {
-                    const rankPercent = itemRanks.get(entityRow.entity) || 0;
-                    const projDel = (rankPercent / totalRankScoreForItem) * 100;
-                    const projLeads = Math.round(projDel / 100 * dailyTarget);
-                    
-                    companyProjectedLeads += projLeads;
-                    breakdownForCompany.push({ name: item.name, projLeads, projDel });
+                let projDel = 0;
+                let projLeads = 0;
+                
+                // Only do calculations if the current entity is actually eligible for this item
+                if (eligibleEntities.some(e => e.name === entityRow.entity)) {
+                    if (totalRankScoreForItem > 0) {
+                        // If there's performance data, distribute by rank
+                        const rankPercent = itemRanks.get(entityRow.entity) || 0;
+                        projDel = (rankPercent / totalRankScoreForItem) * 100;
+                        projLeads = Math.round(projDel / 100 * dailyTarget);
+                    } else if (eligibleEntities.length > 0 && dailyTarget > 0) {
+                        // If no performance data exists, distribute equally among active entities
+                        projDel = 100 / eligibleEntities.length;
+                        projLeads = Math.round(projDel / 100 * dailyTarget);
+                    }
                 }
+                
+                companyProjectedLeads += projLeads;
+                // Always add the item to the breakdown list, even if projection is 0
+                breakdownForCompany.push({ name: item.name, projLeads, projDel });
             });
 
             companyLeads[company] = companyProjectedLeads;
@@ -875,15 +889,22 @@ function renderCompanyView() {
 
             const eligibleEntitiesForRank = allEntitiesList.filter(entity => {
                 const matrixKey = `${entity.id}_${item.id}`;
-                return companyMatrix[matrixKey] !== false && itemRanks.has(entity.name);
+                return companyMatrix[matrixKey] !== false;
             });
-
+            
             const totalRankScoreForItem = eligibleEntitiesForRank.reduce((sum, entity) => sum + (itemRanks.get(entity.name) || 0), 0);
             const isEligibleForProjection = eligibleEntitiesForRank.some(e => e.name === entityRow.entity);
             
-            if (isEligibleForProjection && totalRankScoreForItem > 0) {
-                projDel = (rankPercent / totalRankScoreForItem) * 100;
-                projLeads = Math.round(projDel / 100 * itemTarget);
+            if (isEligibleForProjection) {
+                if (totalRankScoreForItem > 0) {
+                    const rankPercent = itemRanks.get(entityRow.entity) || 0;
+                    projDel = (rankPercent / totalRankScoreForItem) * 100;
+                    projLeads = Math.round(projDel / 100 * itemTarget);
+                } else if (eligibleEntitiesForRank.length > 0 && itemTarget > 0) {
+                    // No ranks, distribute equally
+                    projDel = 100 / eligibleEntitiesForRank.length;
+                    projLeads = Math.round(projDel / 100 * itemTarget);
+                }
             }
             
             totalProjectedLeads += projLeads;
