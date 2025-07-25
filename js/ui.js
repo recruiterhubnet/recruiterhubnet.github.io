@@ -104,7 +104,7 @@ export function populateMultiSelectFilter(buttonEl, dropdownEl, data, key, place
     dropdownEl._clickHandler = handleActionClick;
 
     // Set the initial state of the checkboxes
-    if (key === 'team_name') {
+    if (key === 'team_name' || key === 'recruiter_name') {
         // Default to all teams selected
          dropdownEl.querySelectorAll('.multi-select-item').forEach(cb => cb.checked = true);
     } else {
