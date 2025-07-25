@@ -1713,7 +1713,7 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 /* Define the left offset for each sticky column */
 .rankings-table .sticky-col-1 { left: 0; width: 60px; min-width: 60px; }
 .rankings-table .sticky-col-2 { left: 60px; width: 160px; min-width: 160px; }
-.rankings-table .sticky-col-3 { left: 241px; width: 160px; min-width: 160px; }
+.rankings-table .sticky-col-3 { left: 231px; width: 160px; min-width: 160px; }
 
 
 /* --- ROW HOVER LAG & STYLE FIX --- */
