@@ -260,12 +260,30 @@ function renderAll() {
     const allFilteredData = getFilteredData();
     const { daily, aggregated } = processDataForView(allFilteredData);
 
-    renderKPIs(daily); // Pass the daily aggregated data to KPIs
+    renderKPIs(daily, aggregated);
     renderChart(daily);
     renderTable(aggregated);
 }
 
-function renderKPIs(dailyData) {
+function renderKPIs(dailyData, aggregatedData) {
+    // If only one entity is selected, use its specific median data from the table
+    if (aggregatedData.length === 1) {
+        const entity = aggregatedData[0];
+        // --- FIX START: Calculate the ratio directly ---
+        const total = entity.past_due + entity.contacted + entity.not_due_yet;
+        const ratio = total > 0 ? (entity.past_due / total) * 100 : 0;
+        // --- FIX END ---
+
+        document.getElementById('kpiTotalPastDue').textContent = formatNumber(entity.past_due, 0);
+        document.getElementById('kpiTotalContacted').textContent = formatNumber(entity.contacted, 0);
+        document.getElementById('kpiTotalNotDueYet').textContent = formatNumber(entity.not_due_yet, 0);
+        // --- FIX START: Use the newly calculated ratio ---
+        document.getElementById('kpiPastDueRatio').textContent = `${formatNumber(ratio, 1)}%`;
+        // --- FIX END ---
+        return;
+    }
+
+    // --- This is the original logic for when multiple entities are selected ---
     if (dailyData.size === 0) {
         document.getElementById('kpiTotalPastDue').textContent = '0';
         document.getElementById('kpiTotalContacted').textContent = '0';
@@ -291,7 +309,7 @@ function renderKPIs(dailyData) {
         dailyPastDue.push(day.past_due);
         dailyContacted.push(day.contacted);
         dailyNotDueYet.push(day.not_due_yet);
-        
+
         const dayTotal = day.past_due + day.contacted + day.not_due_yet;
         totalPastDueSum += day.past_due;
         totalGrandSum += dayTotal;
