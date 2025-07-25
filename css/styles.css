@@ -49,6 +49,7 @@ body {
 
 /* --- START: REDESIGNED RANKINGS TABLE STYLES --- */
 .rankings-table {
+    background-color: #111827;
     border-collapse: separate;
     border-spacing: 0;
 }
