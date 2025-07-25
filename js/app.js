@@ -20,7 +20,7 @@ import { initializeLeadAssignmentView, rerenderLeadAssignmentView } from './lead
 import { initializePastDueView } from './pastDueView.js';
 import { initializeArrivalsView } from './arrivalsView.js';
 import { initializeTimeToEngageView, rerenderTimeToEngageView } from './timeToEngageView.js';
-import { initializeDelegationView } from './delegationView.js';
+import { initializeDelegationView, rerenderDelegationView } from './delegationView.js';
 import { initializeRankingsView, rerenderRankingsView } from './rankingsView.js';
 import { initializeSwitchboardView, renderAllSwitchboard } from './switchboardView.js';
 
@@ -231,7 +231,10 @@ function addEventListeners() {
         }
     }
 
-    navButtons.delegation.addEventListener('click', () => setActiveView('delegation'));
+    navButtons.delegation.addEventListener('click', () => {
+        setActiveView('delegation');
+        rerenderDelegationView();
+    });
     navButtons.rankings.addEventListener('click', () => { setActiveView('rankings'); rerenderRankingsView(); });
     navButtons.leadAssignment.addEventListener('click', () => { setActiveView('leadAssignment'); rerenderLeadAssignmentView(); });
     navButtons.leadRisk.addEventListener('click', () => setActiveView('leadRisk'));
