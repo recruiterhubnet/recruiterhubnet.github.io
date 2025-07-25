@@ -480,16 +480,18 @@ function renderTargetsTable() {
     const toDateValue = dateFilterInputs[1]?.value;
     let endDateForHistory = new Date();
     if (toDateValue) {
-        endDateForHistory = new Date(toDateValue);
-        endDateForHistory.setHours(23, 59, 59, 999);
+        // Correctly handle date input to avoid timezone shifts
+        const [year, month, day] = toDateValue.split('-').map(Number);
+        endDateForHistory = new Date(year, month - 1, day);
     }
+    endDateForHistory.setHours(23, 59, 59, 999);
     
     const currentCompanyView = state.currentView;
 
     let historicalHeaderHtml = '';
     for (let i = 0; i < 10; i++) {
         const currentDate = new Date(endDateForHistory);
-        currentDate.setDate(endDateForHistory.getDate() - (i + 1));
+        currentDate.setDate(endDateForHistory.getDate() - i); // Corrected loop start
         const displayDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
         historicalHeaderHtml += `<th class="historical-day-header">${displayDate}</th>`;
     }
@@ -514,18 +516,22 @@ function renderTargetsTable() {
             const historicalCols = [];
             for (let i = 0; i < 10; i++) {
                 const currentDate = new Date(endDateForHistory);
-                currentDate.setDate(endDateForHistory.getDate() - (i + 1));
-                const dateString = currentDate.toISOString().split('T')[0];
+                currentDate.setDate(endDateForHistory.getDate() - i); // Corrected loop start
+                
                 const contractNames = item.contractIds 
                     ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name)
                     : [item.name];
                 
+                // Corrected date comparison to be timezone-safe
                 const dayTotal = appState.allData
-                    .filter(d => 
-                        new Date(d.date).toISOString().split('T')[0] === dateString &&
-                        contractNames.includes(d.contract_type) &&
-                        (!currentCompanyView || currentCompanyView === 'master' || d.company_name === currentCompanyView)
-                    )
+                    .filter(d => {
+                        const rowDate = d.date; // d.date is already a Date object
+                        return rowDate.getFullYear() === currentDate.getFullYear() &&
+                               rowDate.getMonth() === currentDate.getMonth() &&
+                               rowDate.getDate() === currentDate.getDate() &&
+                               contractNames.includes(d.contract_type) &&
+                               (!currentCompanyView || currentCompanyView === 'master' || d.company_name === currentCompanyView);
+                    })
                     .reduce((sum, d) => sum + (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0), 0);
 
                 historicalCols.push(`<td class="historical-day">${dayTotal}</td>`);
