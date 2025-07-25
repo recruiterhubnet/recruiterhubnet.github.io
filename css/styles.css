@@ -1673,3 +1673,128 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 .company-color-text-amongus { color: #22d3ee; }
 .company-color-text-eb-infinity { color: #60a5fa; }
 .company-color-text-smj { color: #f59e0b; }
+
+/* --- START: RANKINGS TABLE STICKY HEADER, FOOTER & COLUMN FIX (FINAL) --- */
+.rankings-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* --- VERTICAL STICKY HEADER (Rows) --- */
+/* Establishes the vertical sticky position and a base z-index for all header cells */
+.rankings-table thead th {
+    position: sticky;
+    background-color: #1f2937; /* A solid background is crucial */
+    z-index: 20; /* Base z-index for header rows */
+}
+.rankings-table thead tr:nth-child(1) th { top: 0; }
+.rankings-table thead tr:nth-child(2) th { top: 30px; } /* Height of 1st row */
+.rankings-table thead tr:nth-child(3) th { top: 65px; } /* Height of 1st + 2nd rows */
+
+/* --- VERTICAL STICKY FOOTER --- */
+.rankings-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 20; /* Same level as header rows */
+    background-color: #1f2937;
+    border-top: 2px solid #4b5563;
+}
+
+/* --- HORIZONTAL STICKY COLUMNS (Body & Footer) --- */
+/* This rule targets all cells in the first three columns */
+.rankings-table .sticky-col-1,
+.rankings-table .sticky-col-2,
+.rankings-table .sticky-col-3 {
+    position: sticky;
+    z-index: 10; /* Base z-index for columns, lower than headers/footers */
+}
+
+/* Define the left offset for each sticky column */
+.rankings-table .sticky-col-1 { left: 0; width: 60px; min-width: 60px; }
+.rankings-table .sticky-col-2 { left: 60px; width: 160px; min-width: 160px; }
+.rankings-table .sticky-col-3 { left: 241px; width: 160px; min-width: 160px; }
+
+
+/* --- ROW HOVER LAG & STYLE FIX --- */
+
+/* 1. Reset the default sticky column background in the table body. */
+.rankings-table tbody .sticky-col-1,
+.rankings-table tbody .sticky-col-2,
+.rankings-table tbody .sticky-col-3 {
+    background-color: #111827; /* Original sticky background */
+}
+
+/* 2. Promote all body cells to their own rendering layer.
+      This forces hardware acceleration and prevents lag. */
+.rankings-table tbody td {
+    transform: translateZ(0);
+}
+
+/* 3. Apply a single, unified hover rule to ALL cells in the row.
+      This ensures the sticky and non-sticky columns change color at the same time. */
+.rankings-table tbody tr:hover td {
+    background-color: #1f2937; /* Your desired hover color */
+}
+.rankings-table tbody tr:hover .sticky-col-1,
+.rankings-table tbody tr:hover .sticky-col-2,
+.rankings-table tbody tr:hover .sticky-col-3 {
+    background-color: #1f2937; /* Hover background */
+}
+.rankings-table tfoot .sticky-col-1,
+.rankings-table tfoot .sticky-col-2,
+.rankings-table tfoot .sticky-col-3 {
+    background-color: #1f2937; /* Match footer background */
+}
+
+/* --- THE CRITICAL FIX: STICKY HEADER + FOOTER + COLUMN INTERSECTIONS --- */
+/* Give the sticky cells in the header AND footer the highest z-index.
+   This ensures they stay on top when scrolling both vertically and horizontally. */
+.rankings-table thead .sticky-col-1,
+.rankings-table thead .sticky-col-2,
+.rankings-table thead .sticky-col-3,
+.rankings-table tfoot .sticky-col-1,
+.rankings-table tfoot .sticky-col-2,
+.rankings-table tfoot .sticky-col-3 {
+    z-index: 30;
+}
+
+/* --- Minor Visual Tweaks --- */
+#rankingsSummaryStatSelect { position: relative; z-index: 31; } /* Ensure dropdown is on top */
+
+/* --- CSS-ONLY STICKY COLUMN SEPARATOR LINE --- */
+/* 1. For the 3-column "Recruiter" view:
+      If a .sticky-col-3 exists, the border goes on it. */
+.rankings-table .sticky-col-3 {
+    border-right: 2px solid #4b5563;
+}
+
+/* 2. For the 2-column "Profiler" & "Team" views:
+      If a table row :not(:has()) a .sticky-col-3, apply the border to .sticky-col-2. */
+.rankings-table tr:not(:has(.sticky-col-3)) .sticky-col-2 {
+    border-right: 2px solid #4b5563;
+}
+
+/* --- EXISTING VISUAL STYLES (UNCHANGED) --- */
+.rankings-table .th-main-group, .rankings-table .th-effort-group, .rankings-table .th-compliance-group, .rankings-table .th-arrivals-group { height: 30px; }
+.rankings-table .th-sub-group, .rankings-table .th-col-label { height: 25px; }
+.rankings-table .th-base { font-size: 0.7rem; font-weight: 500; border-bottom: 1px solid #4b5563; }
+.rankings-table .th-main-group { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; border-bottom: 1px solid #4b5563; }
+.rankings-table .th-sub-group { font-size: 0.7rem; font-weight: 600; border-bottom: 1px solid #4b5563; }
+.rankings-table .th-col-label { font-size: 0.7rem; font-weight: 500; border-bottom: 1px solid #4b5563; }
+.rankings-table .th-effort-group { background-color: #f97316; color: #ffedd5; }
+.rankings-table .th-compliance-group { background-color: #047857; color: #a7f3d0; }
+.rankings-table .th-arrivals-group { background-color: #7c2d12; color: #fdbb74; }
+.rankings-table td { font-size: 0.8rem; padding: 0.4rem 0.5rem; border-bottom: 1px solid #1f2937; }
+.rankings-table .border-l-main { border-left: 3px solid rgb(75, 85, 99); }
+.rankings-table .border-l-sub-group { border-left: 1px solid rgb(55, 65, 81); }
+.final-score-cell { background-color: rgba(59, 130, 246, 0.15); font-weight: 700 !important; font-size: 0.9rem !important; color: #a5cfff !important; }
+.final-score-header { background-color: #1e3a8a !important; border-left: 3px solid rgb(75, 85, 99); }
+.percentile-cell { color: #9ca3af; }
+.score-summary-cell { background-color: rgba(30, 41, 59, 0.8); font-weight: 600; font-size: 0.75rem; color: #e2e8f0; }
+.effort-score-header, .effort-score-cell { background-color: rgba(249, 115, 22, 0.15); }
+.compliance-score-header, .compliance-score-cell { background-color: rgba(16, 185, 129, 0.15); }
+.arrivals-score-header, .arrivals-score-cell { background-color: rgba(239, 68, 68, 0.15); }
+.effort-score-header { background-color: rgba(249, 115, 22, 0.15); color: #ffedd5; }
+.compliance-score-header { background-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; }
+.arrivals-score-header { background-color: rgba(239, 68, 68, 0.15); color: #fdbb74; }
+/* --- END: RANKINGS TABLE STICKY HEADER, FOOTER & COLUMN FIX (FINAL) --- */
