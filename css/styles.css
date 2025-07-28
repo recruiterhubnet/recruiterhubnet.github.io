@@ -49,7 +49,6 @@ body {
 
 /* --- START: REDESIGNED RANKINGS TABLE STYLES --- */
 .rankings-table {
-    background-color: #111827;
     border-collapse: separate;
     border-spacing: 0;
 }
@@ -1799,3 +1798,55 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 .compliance-score-header { background-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; }
 .arrivals-score-header { background-color: rgba(239, 68, 68, 0.15); color: #fdbb74; }
 /* --- END: RANKINGS TABLE STICKY HEADER, FOOTER & COLUMN FIX (FINAL) --- */
+
+
+/* --- START: CSS for Text-Hover Header Tooltips --- */
+.th-tooltip-container {
+    position: relative; /* This is still needed for structure */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* This is the tooltip template that stays hidden in the header */
+.th-tooltip-container .th-tooltip-text {
+    display: none; /* Hide the original tooltip, JS will read from it */
+}
+
+/* This is the class for the NEW, dynamically created tooltip */
+.dynamic-tooltip {
+    position: fixed; /* Use fixed positioning to appear on top of everything */
+    z-index: 1000;   /* High z-index */
+    
+    width: 320px;
+    background-color: #1f2937;
+    color: #d1d5db;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    
+    text-align: left;
+    white-space: normal;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    text-transform: none;
+    letter-spacing: normal;
+
+    pointer-events: none; /* Prevent the tooltip from blocking mouse events */
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+
+.dynamic-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+}
+/* --- END: CSS for Text-Hover Header Tooltips --- */
