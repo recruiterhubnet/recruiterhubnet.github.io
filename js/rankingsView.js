@@ -2,6 +2,7 @@ import { state, defaultRankingWeights, defaultRankingWeightsProfiler } from './s
 import { openModal, closeModal, populateMultiSelectFilter, formatNumber, formatDuration, populateFilters } from './ui.js';
 
 let isInitialized = false;
+let activeTooltip = null;
 
 // --- HELPER FUNCTIONS ---
 function parseTTEValue(value) {
@@ -786,6 +787,53 @@ function addRankingsEventListeners() {
     const filters = ['rankingsDateFromFilter', 'rankingsDateToFilter'];
     filters.forEach(id => document.getElementById(id).addEventListener('change', renderRankings));
 
+    const tableHeader = document.getElementById('rankingsTableHeader');
+tableHeader.addEventListener('mouseover', (e) => {
+    const tooltipContainer = e.target.closest('.th-tooltip-container');
+    if (!tooltipContainer) return;
+
+    // Clean up any lingering tooltips
+    if (activeTooltip) activeTooltip.remove();
+
+    const tooltipTemplate = tooltipContainer.querySelector('.th-tooltip-text');
+    if (!tooltipTemplate) return;
+
+    // Create the new tooltip element
+    activeTooltip = document.createElement('div');
+    activeTooltip.className = 'dynamic-tooltip';
+    activeTooltip.innerHTML = tooltipTemplate.innerHTML;
+    document.body.appendChild(activeTooltip);
+
+    // Position the new tooltip
+    const headerRect = tooltipContainer.getBoundingClientRect();
+    const tooltipRect = activeTooltip.getBoundingClientRect();
+
+    let top = headerRect.top - tooltipRect.height - 8; // 8px margin
+    let left = headerRect.left + (headerRect.width / 2) - (tooltipRect.width / 2);
+
+    // Prevent it from going off-screen
+    if (left < 8) left = 8;
+    if (left + tooltipRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - tooltipRect.width - 8;
+    }
+    if (top < 8) { // If it goes off the top, flip it to below
+        top = headerRect.bottom + 8;
+        // We need to remove and re-add the ::after pseudo-element for the arrow
+        activeTooltip.style.setProperty('--arrow-top', 'auto');
+        activeTooltip.style.setProperty('--arrow-bottom', '100%');
+    }
+
+    activeTooltip.style.left = `${left}px`;
+    activeTooltip.style.top = `${top}px`;
+});
+
+tableHeader.addEventListener('mouseout', () => {
+    if (activeTooltip) {
+        activeTooltip.remove();
+        activeTooltip = null;
+    }
+});
+
     const multiSelects = [
         { btn: 'rankingsTeamFilterBtn', dropdown: 'rankingsTeamFilterDropdown' },
         { btn: 'rankingsCompanyFilterBtn', dropdown: 'rankingsCompanyFilterDropdown' },
@@ -1409,6 +1457,51 @@ function renderRankingsHeaders() {
     header.closest('table').classList.add('rankings-table');
 
     const mode = state.rankingsMode;
+    const isProfiler = mode === 'profiler';
+    const settings = isProfiler ? state.rankingSettingsProfiler : state.rankingSettings;
+    const perLead = settings.perLeadMetrics;
+
+    // --- TOOLTIP DEFINITIONS (Unchanged) ---
+    const tooltips = {
+        rank: "The entity's overall performance rank compared to others within the selected filters. A lower number is better.",
+        name: "The name of the individual recruiter or team being ranked.",
+        num_recruiters: "The number of individual recruiters contributing to the team's data for the selected period.",
+        new_leads_assigned_on_date: "The total number of leads assigned during the selected date range that were 14 days old or less at the time of assignment.",
+        old_leads_assigned_on_date: "The total number of leads assigned during the selected date range that were more than 14 days old at the time of assignment.",
+        hot_leads_assigned: "The total number of leads marked as 'Hot' that were assigned during the selected date range. (Applies to Recruiters/Teams)",
+        fresh_leads_assigned_on_date: "The total number of leads assigned during the selected date range that had a creation date within the last 24 hours. (Applies to Profilers)",
+        final_score: "The overall weighted performance score, calculated from the Effort, Compliance, and Arrivals scores. This score determines the final rank. Higher is better.",
+        effort_score: isProfiler
+            ? "A weighted score based on communication efforts, including calls, SMS, note length, active days, and time to profile. Higher is better."
+            : "A weighted score based on communication efforts, including calls, SMS, and active days. Higher is better.",
+        compliance_score: isProfiler
+            ? "A weighted score measuring adherence to protocols, including Time to Engage, Leads Reached, Profile Score, Documents Score, and Median Call Duration. Higher is better."
+            : "A weighted score measuring adherence to protocols, including Time to Engage, Leads Reached, Profile Completion, Documents Score, Past Due Ratio, and Median Call Duration. Higher is better.",
+        arrivals_score: "A weighted score based on successful outcomes, including drug tests and onboarding. Higher is better.",
+        calls_score: "A weighted score reflecting call activity, combining total calls, unique calls, and total call duration. Higher is better.",
+        sms_score: "A weighted score reflecting SMS activity, combining total and unique SMS sent. Higher is better.",
+        outbound_calls: perLead.outbound_calls ? "The average number of outbound calls made per lead assigned. Higher is better." : "The total number of outbound calls made. Higher is better.",
+        unique_calls: perLead.unique_calls ? "The average number of unique phone numbers contacted per lead assigned. Higher is better." : "The total number of unique phone numbers contacted via an outbound call. Higher is better.",
+        call_duration_seconds: perLead.call_duration_seconds ? "The average duration in minutes of all outbound calls per lead assigned. Higher is better." : "The total duration in minutes of all outbound calls. Higher is better.",
+        outbound_sms: perLead.outbound_sms ? "The average number of outbound SMS messages sent per lead assigned. Higher is better." : "The total number of outbound SMS messages sent. Higher is better.",
+        unique_sms: perLead.unique_sms ? "The average number of unique phone numbers contacted via SMS per lead assigned. Higher is better." : "The total number of unique phone numbers contacted via outbound SMS. Higher is better.",
+        profiler_note_lenght_all: "The average length of notes entered by a profiler for the leads they've worked on. Higher is better. (Applies to Profilers)",
+        active_days: "The total number of days the entity met the minimum activity thresholds (calls, duration, SMS) set in Advanced Settings. Higher is better.",
+        median_time_to_profile: "The median time taken from lead assignment to the completion of a profile. Lower is better. (Applies to Profilers)",
+        tte_value: "The median time it takes to first engage a lead (call or SMS) after assignment. The specific percentile (e.g., P50) and lead type used are configured in Advanced Settings. Lower is better. '∞' means leads were assigned but never engaged.",
+        leads_reached: "The percentage of assigned leads that received a first engagement. This is calculated as the highest percentile (P10-P100) where a finite TTE value exists. Higher is better.",
+        median_call_duration: "The median duration of a single outbound call. This helps measure the quality of conversations. Higher is better.",
+        profiles_completed: perLead.profiles_completed ? "The average number of profiles completed per lead assigned. Higher is better." : "The total number of leads moved to a 'Closed' or completed status. Higher is better.",
+        profiles_score: "A weighted score combining the number of leads profiled and the number of profiles completed. Higher is better. (Applies to Profilers)",
+        profiles_profiled: perLead.profiles_profiled ? "The average number of leads profiled per lead assigned. Higher is better. (Applies to Profilers)" : "The total number of leads that have been profiled. Higher is better. (Applies to Profilers)",
+        documents_score: "A weighted score based on the collection of MVR, PSP, and CDL documents. Higher is better.",
+        mvr: "The total number of Motor Vehicle Record documents collected.",
+        psp: "The total number of Pre-Employment Screening Program documents collected.",
+        cdl: "The total number of Commercial Driver's License documents collected.",
+        past_due_ratio: "The percentage of leads in the entity's portfolio that are past the required follow-up time (typically 24 hours). Lower is better. (Applies to Recruiters/Teams)",
+        total_drug_tests: perLead.total_drug_tests ? "The average number of completed drug tests per lead assigned. Higher is better." : "The total number of completed drug tests. The specific test types included can be configured in Advanced Settings. Higher is better.",
+        onboarded: perLead.onboarded ? "The average number of successful arrivals/onboardings per lead assigned. Higher is better." : "The total number of successful arrivals/onboardings. Higher is better.",
+    };
 
     const headerConfig = {
         base: [
@@ -1488,18 +1581,16 @@ function renderRankingsHeaders() {
         }
     };
 
-    const settings = mode === 'profiler' ? state.rankingSettingsProfiler : state.rankingSettings;
-    const perLeadSettings = settings.perLeadMetrics;
     const dynamicLabels = {
-        outbound_calls: { label: perLeadSettings.outbound_calls ? 'Calls/Ld' : 'Total' },
-        unique_calls: { label: perLeadSettings.unique_calls ? 'Unq/Ld' : 'Unq' },
-        call_duration_seconds: { label: perLeadSettings.call_duration_seconds ? 'Dur/Ld' : 'Duration' },
-        outbound_sms: { label: perLeadSettings.outbound_sms ? 'SMS/Ld' : 'Total' },
-        unique_sms: { label: perLeadSettings.unique_sms ? 'Unq/Ld' : 'Unq' },
-        total_drug_tests: { label: perLeadSettings.total_drug_tests ? 'DT/Ld' : 'DT' },
-        onboarded: { label: perLeadSettings.onboarded ? 'Onb/Ld' : 'Onboarded' },
-        profiles_profiled: { label: perLeadSettings.profiles_profiled ? 'Prof/Ld' : 'Profiled' },
-        profiles_completed: { label: perLeadSettings.profiles_completed ? 'Comp/Ld' : 'Completed' },
+        outbound_calls: { label: perLead.outbound_calls ? 'Calls/Ld' : 'Total' },
+        unique_calls: { label: perLead.unique_calls ? 'Unq/Ld' : 'Unq' },
+        call_duration_seconds: { label: perLead.call_duration_seconds ? 'Dur/Ld' : 'Duration' },
+        outbound_sms: { label: perLead.outbound_sms ? 'SMS/Ld' : 'Total' },
+        unique_sms: { label: perLead.unique_sms ? 'Unq/Ld' : 'Unq' },
+        total_drug_tests: { label: perLead.total_drug_tests ? 'DT/Ld' : 'DT' },
+        onboarded: { label: perLead.onboarded ? 'Onb/Ld' : 'Onboarded' },
+        profiles_profiled: { label: perLead.profiles_profiled ? 'Prof/Ld' : 'Profiled' },
+        profiles_completed: { label: perLead.profiles_completed ? 'Comp/Ld' : 'Completed' },
     };
 
     for (const key in dynamicLabels) {
@@ -1513,17 +1604,25 @@ function renderRankingsHeaders() {
         const isSorted = sortKey === key;
         const sortClasses = isSorted ? `sorted-${sortDir}` : '';
         const alignClass = conf.type === 'number' ? 'text-center' : 'text-left';
-
-        // --- sticky classes to the first 3 base columns ---
         let stickyClasses = '';
         if (key === 'rank') stickyClasses = 'th-sticky sticky-col-1';
         if (key === 'name') stickyClasses = 'th-sticky sticky-col-2';
         if (key === 'team') stickyClasses = 'th-sticky sticky-col-3';
-        // --- FIX END ---
+
+        const tooltipText = tooltips[key];
+        const hasTooltip = !!tooltipText;
+
+        // The content inside the flex container, now wrapped for tooltip functionality
+        const cellContent = `
+            <div class="${hasTooltip ? 'th-tooltip-container' : ''}">
+                <span>${conf.label}</span>
+                ${hasTooltip ? `<div class="th-tooltip-text" style="display: none;">${tooltipText}</div>` : ''}
+            </div>
+        `;
 
         return `<th scope="col" class="table-header-cell sortable ${sortClasses} ${extraClass} ${stickyClasses} ${conf.colorClass || ''} py-1 px-1.5 ${alignClass} cursor-pointer" rowspan="${rowspan}" colspan="${colspan}" data-sort-key="${key}">
             <div class="flex items-center ${alignClass === 'text-center' ? 'justify-center' : ''}">
-                <span>${conf.label}</span>
+                ${cellContent}
                 <span class="sort-icon sort-icon-up ml-1"><i class="fas fa-arrow-up"></i></span>
                 <span class="sort-icon sort-icon-down ml-1"><i class="fas fa-arrow-down"></i></span>
             </div>
@@ -1540,18 +1639,42 @@ function renderRankingsHeaders() {
 
     headerConfig.mainGroups.forEach((mainGroup) => {
         if (mainGroup.hidden) return;
-        let mainGroupColspan = 1; 
+        let mainGroupColspan = 1;
         mainGroup.subGroups.filter(sg => !sg.hidden).forEach(subGroup => {
             mainGroupColspan += subGroup.columns.length * 2 + (subGroup.scoreKey ? 1 : 0);
         });
-        row1Html += `<th colspan="${mainGroupColspan}" class="th-main-group text-center py-1 border-l-main ${mainGroup.cssClass}">${mainGroup.label}</th>`;
+
+        const tooltipText = tooltips[mainGroup.scoreKey];
+        const hasTooltip = !!tooltipText;
+        const mainGroupContent = `
+            <div class="${hasTooltip ? 'th-tooltip-container' : ''}">
+                <span>${mainGroup.label}</span>
+                ${hasTooltip ? `<div class="th-tooltip-text">${tooltipText}</div>` : ''}
+            </div>
+        `;
+
+        row1Html += `<th colspan="${mainGroupColspan}" class="th-main-group text-center py-1 border-l-main ${mainGroup.cssClass}">
+            <div class="flex items-center justify-center">${mainGroupContent}</div>
+        </th>`;
 
         let scoreHeaderClass = `border-l-main score-summary-cell ${mainGroup.scoreKey.replace('_', '-')}-header`;
         row2Html += buildHeaderCell(mainGroup.scoreKey, headerConfig.columnDetails[mainGroup.scoreKey], 2, 1, scoreHeaderClass);
 
         mainGroup.subGroups.filter(sg => !sg.hidden).forEach((subGroup) => {
             let subGroupColspan = subGroup.columns.length * 2 + (subGroup.scoreKey ? 1 : 0);
-            row2Html += `<th colspan="${subGroupColspan}" class="th-sub-group text-center py-1 border-l-sub-group">${subGroup.label}</th>`;
+            
+            const subGroupTooltipText = tooltips[subGroup.scoreKey];
+            const hasSubGroupTooltip = !!subGroupTooltipText;
+            const subGroupContent = `
+                <div class="${hasSubGroupTooltip ? 'th-tooltip-container' : ''}">
+                    <span>${subGroup.label}</span>
+                    ${hasSubGroupTooltip ? `<div class="th-tooltip-text">${subGroupTooltipText}</div>` : ''}
+                </div>
+            `;
+            
+            row2Html += `<th colspan="${subGroupColspan}" class="th-sub-group text-center py-1 border-l-sub-group">
+                <div class="flex items-center justify-center">${subGroupContent}</div>
+            </th>`;
 
             if (subGroup.scoreKey) {
                 row3Html += buildHeaderCell(subGroup.scoreKey, headerConfig.columnDetails[subGroup.scoreKey], 1, 1, 'border-l-sub-group score-summary-cell');
@@ -1565,7 +1688,8 @@ function renderRankingsHeaders() {
                 }
 
                 row3Html += buildHeaderCell(colKey, colConf, 1, 1, valueCellExtraClass);
-                row3Html += buildHeaderCell(`${colKey}_percentile`, {label: '%', type: 'number'}, 1, 1, 'th-col-label percentile-cell');
+                const percentileTooltip = `This entity's performance for this metric relative to all others in the current view, expressed as a percentile (0-100).`;
+                row3Html += buildHeaderCell(`${colKey}_percentile`, {label: '%', type: 'number', tooltip: percentileTooltip}, 1, 1, 'th-col-label percentile-cell');
             });
         });
     });
