@@ -42,6 +42,7 @@ export const state = {
     tteViewMode: 'Average',
     tteSummaryStat: 'median',
     tteSortConfig: { key: 'recruiter_name', direction: 'asc' },
+    tteDataType: 'standard',
     // Lead Assignment State
     laViewMode: 'aggregated',
     laSortConfig: { key: 'recruiter_name', direction: 'asc' },
