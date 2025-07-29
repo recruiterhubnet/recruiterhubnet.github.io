@@ -50,8 +50,8 @@ export function initializePastDueView() { // The 'export' keyword here makes the
 
     populateMultiSelectFilter(document.getElementById('pdTeamFilterBtn'), document.getElementById('pdTeamFilterDropdown'), state.recruiterData, 'team_name', 'All Teams', true);
     populateMultiSelectFilter(document.getElementById('pdRecruiterFilterBtn'), document.getElementById('pdRecruiterFilterDropdown'), state.recruiterData, 'recruiter_name', 'All Recruiters', true);
-    populateMultiSelectFilter(document.getElementById('pdCompanyFilterBtn'), document.getElementById('pdCompanyFilterDropdown'), companyList, 'company_name', 'All Companies', false);
-    populateMultiSelectFilter(document.getElementById('pdContractFilterBtn'), document.getElementById('pdContractFilterDropdown'), contractList, 'contract_type', 'All Contracts', false);
+    populateMultiSelectFilter(document.getElementById('pdCompanyFilterBtn'), document.getElementById('pdCompanyFilterDropdown'), companyList, 'company_name', 'All Companies', false, 'ALL');
+    populateMultiSelectFilter(document.getElementById('pdContractFilterBtn'), document.getElementById('pdContractFilterDropdown'), contractList, 'contract_type', 'All Contracts', false, 'ALL');
 
     addEventListeners();
     renderAll();
