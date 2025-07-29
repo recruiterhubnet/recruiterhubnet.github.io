@@ -7,6 +7,8 @@ export const arrivalsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbw1
 //This is the old URL, now specifically for drug tests
 export const drugTestsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbzFLFUSZDLkqV1aqrpM95T8Nz_zL7-aAAlYoG4_m2k0NbvxuVajyzyh86RzHh6JqkPm/exec';
 export const mvrPspCdlAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxFOXsdgXgskgDhqmPtCpGuaWpl7Gb08QzJvp9EOXxGS0SzHZKsIn8CxJH91qomC_-FBQ/exec'; 
+//This is the Lead Count Assignment chart link
+export const leadLifecycleAppScriptUrl = 'https://script.google.com/macros/s/AKfycbx5dp8RX2ezRT3jM64Av5nvGtHD6eRIt8wlkCURXaRycBY-neRtLnWiM8ZVb4XaRWT9aw/exec';
 
 
 export const columnsConfig = {
