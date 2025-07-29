@@ -1,6 +1,6 @@
 // js/api.js
 
-import { leadRiskAppScriptUrl, workingHoursAppScriptUrl, arrivalsAppScriptUrl, drugTestsAppScriptUrl, mvrPspCdlAppScriptUrl } from './config.js';
+import { leadRiskAppScriptUrl, workingHoursAppScriptUrl, arrivalsAppScriptUrl, drugTestsAppScriptUrl, mvrPspCdlAppScriptUrl, leadLifecycleAppScriptUrl } from './config.js';
 
 
 async function fetchData(url) {
@@ -27,18 +27,21 @@ export async function fetchAllData() {
     const arrivalsPromise = fetchData(arrivalsAppScriptUrl);
     const drugTestsPromise = fetchData(drugTestsAppScriptUrl);
     const mvrPspCdlPromise = fetchData(mvrPspCdlAppScriptUrl);
+    const leadLifecyclePromise = fetchData(leadLifecycleAppScriptUrl);
 
-    const [leadRiskData, whData, arrivalsResponse, drugTestsResponse, fullCaptureResponse] = await Promise.all([
+    const [leadRiskData, whData, arrivalsResponse, drugTestsResponse, fullCaptureResponse, leadLifecycleResponse] = await Promise.all([
         leadRiskPromise,
         workingHoursPromise,
         arrivalsPromise,
         drugTestsPromise,
-        mvrPspCdlPromise
+        mvrPspCdlPromise,
+        leadLifecyclePromise
     ]);
 
     const mvrPspCdlData = fullCaptureResponse ? fullCaptureResponse.mvr_psp_cdl : [];
     const recruiterData = fullCaptureResponse ? fullCaptureResponse.recruiter_capture : [];
     const profilerData = fullCaptureResponse ? fullCaptureResponse.profiler_capture : [];
+    const leadLifecycleData = leadLifecycleResponse ? leadLifecycleResponse.data : [];
 
     // Robustly extract arrivals data to handle different possible JSON structures
     let finalArrivalsData = [];
@@ -64,5 +67,6 @@ export async function fetchAllData() {
         mvrPspCdlData: mvrPspCdlData || [],
         recruiterData: recruiterData || [],
         profilerData: profilerData || [],
+        leadLifecycleData: leadLifecycleData || [],
     };
 }
