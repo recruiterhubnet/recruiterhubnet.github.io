@@ -731,18 +731,20 @@ function populateRankingsFilters() {
         teamData = state.combinedDataForRankings.filter(d => d.team_name !== 'Profilers');
     }
 
+    // This populates the team filter, which correctly defaults to all selected.
     populateMultiSelectFilter(document.getElementById('rankingsTeamFilterBtn'), document.getElementById('rankingsTeamFilterDropdown'), teamData, 'team_name', 'All Teams');
-    populateMultiSelectFilter(document.getElementById('rankingsCompanyFilterBtn'), document.getElementById('rankingsCompanyFilterDropdown'), state.combinedDataForRankings, 'company_name', 'All Companies');
+    
+    // This now correctly defaults to only "ALL" selected for companies.
+    populateMultiSelectFilter(document.getElementById('rankingsCompanyFilterBtn'), document.getElementById('rankingsCompanyFilterDropdown'), state.combinedDataForRankings, 'company_name', 'All Companies', false, 'ALL');
 
-    // --- NEW: Use a default, hardcoded list for contracts ---
+    // --- THIS IS THE FIX ---
+    // It creates the hardcoded list and then tells the function to only select "ALL" by default.
     const defaultContracts = [
         'ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'
     ];
-    
     const allContractsList = defaultContracts.map(contractName => ({ contract_type: contractName }));
 
-    // Populate the filter with the default list
-    populateMultiSelectFilter(document.getElementById('rankingsContractFilterBtn'), document.getElementById('rankingsContractFilterDropdown'), allContractsList, 'contract_type', 'All Contracts');
+    populateMultiSelectFilter(document.getElementById('rankingsContractFilterBtn'), document.getElementById('rankingsContractFilterDropdown'), allContractsList, 'contract_type', 'All Contracts', false, 'ALL');
 }
 
 function addRankingsEventListeners() {
