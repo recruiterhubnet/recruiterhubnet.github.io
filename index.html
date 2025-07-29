@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -382,9 +383,25 @@
                                 <input type="date" value="2025-07-04">
                             </div>
                         </div>
-                        <button class="settings-btn" title="Delegation Settings">
-                            <i class="fa fa-cog"></i> Settings
-                        </button>
+                        <div class="mt-auto space-y-2">
+                            <!-- New container for the split button -->
+                            <div id="delegationActionsContainer" class="split-btn-container w-full">
+                                <button id="copyDelegationBtn" class="split-btn-left" data-tooltip="Copy Delegation Rules">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <div class="split-btn-divider"></div>
+                                <button id="downloadDelegationBtn" class="split-btn-middle" data-tooltip="Download Delegation Rules (Text)">
+                                    <i class="fas fa-file-alt"></i>
+                                </button>
+                                <div class="split-btn-divider"></div>
+                                <button id="downloadImageBtn" class="split-btn-right" data-tooltip="Download Delegation Table (Image)">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                            </div>
+                            <button id="openDelegationSettingsBtn" class="settings-btn w-full" title="Delegation Settings">
+                                <i class="fa fa-cog"></i> Settings
+                            </button>
+                        </div>
                     </aside>
                 </div>
             </div>
