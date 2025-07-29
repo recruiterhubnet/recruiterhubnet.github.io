@@ -541,11 +541,15 @@
 
             <div id="timeToEngageView" class="hidden p-4 md:p-6 flex flex-col h-full">
                 <div class="control-deck mb-4 p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch between Standard and Hot/Fresh lead data">
+                        <button id="tteDataTypeStandardBtn" class="view-toggle-btn active px-3 py-2.5 text-sm font-semibold rounded-md">Standard</button>
+                        <button id="tteDataTypeHotFreshBtn" class="view-toggle-btn px-3 py-2.5 text-sm font-semibold rounded-md">Hot/Fresh</button>
+                    </div>
                     <div class="flex-1 min-w-[150px]"><label for="tteRecruiterFilter" class="block text-xs font-medium text-gray-400 mb-1">Recruiter</label><select id="tteRecruiterFilter" class="w-full control-deck-select text-sm" title="Filter by recruiter"></select></div>
                     <div class="flex-1 min-w-[150px]"><label for="tteTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="tteTeamFilter" class="w-full control-deck-select text-sm" title="Filter by team"></select></div>
                     <div class="flex-1 min-w-[150px]"><label for="tteCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="tteCompanyFilter" class="w-full control-deck-select text-sm" title="Filter by company"></select></div>
                     <div class="flex-1 min-w-[150px]"><label for="tteContractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract</label><select id="tteContractFilter" class="w-full control-deck-select text-sm" title="Filter by contract type"></select></div>
-                    <div class="flex-1 min-w-[100px]"><label for="tteLeadTypeFilter" class="block text-xs font-medium text-gray-400 mb-1">Lead Type</label><select id="tteLeadTypeFilter" class="w-full control-deck-select text-sm" title="Filter by lead type"><option value="total">All</option><option value="new">New</option><option value="old">Old</option></select></div>
+                    <div id="tteLeadTypeFilterContainer" class="flex-1 min-w-[100px]"><label for="tteLeadTypeFilter" class="block text-xs font-medium text-gray-400 mb-1">Lead Type</label><select id="tteLeadTypeFilter" class="w-full control-deck-select text-sm" title="Filter by lead type"><option value="total">All</option><option value="new">New</option><option value="old">Old</option></select></div>
                     <div class="bg-gray-800 rounded-md" title="Switch between daily data (Stub) and summarized data (Average)">
                         <button id="tteViewStubBtn" class="view-toggle-btn px-2 py-2.5 text-sm font-semibold rounded-md">Day</button>
                         <button id="tteViewAverageBtn" class="view-toggle-btn active px-2 py-2.5 text-sm font-semibold rounded-md">Average</button>
