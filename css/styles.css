@@ -1850,3 +1850,28 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     border-color: #1f2937 transparent transparent transparent;
 }
 /* --- END: CSS for Text-Hover Header Tooltips --- */
+/* --- START: Lead Lifecycle Compact Table Styles --- */
+.lead-lifecycle-table th, .lead-lifecycle-table td {
+    padding: 4px 8px; /* Greatly reduced vertical and horizontal padding */
+    white-space: nowrap; /* This is the key to prevent text wrapping */
+}
+
+.lead-lifecycle-table thead th {
+    font-size: 0.7rem; /* Make header font smaller (11.2px) */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.lead-lifecycle-table tbody td {
+    font-size: 0.8rem; /* Slightly smaller font for data cells (12.8px) */
+}
+
+/* Give the 'Lead Age' column a fixed width to ensure it doesn't get squished */
+.lead-lifecycle-table th:first-child,
+.lead-lifecycle-table td:first-child {
+    width: 110px; 
+    min-width: 110px;
+    text-align: left;
+    padding-left: 12px;
+}
+/* --- END: Lead Lifecycle Compact Table Styles --- */
