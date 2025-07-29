@@ -1875,3 +1875,13 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     padding-left: 12px;
 }
 /* --- END: Lead Lifecycle Compact Table Styles --- */
+/* --- START: Lead Lifecycle Layout Fix --- */
+#llTableWrapper {
+    flex-grow: 1; /* Allows the table wrapper to expand */
+    overflow: hidden; /* Prevents the wrapper itself from scrolling */
+}
+
+#llTableWrapper .table-container {
+    height: 100%; /* Ensures the inner container fills the wrapper */
+}
+/* --- END: Lead Lifecycle Layout Fix --- */
