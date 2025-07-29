@@ -70,6 +70,21 @@ export const state = {
     breakdownDataSource: 'all',
     // Working hours
     whLastSelectedDay: null,
+    // Lead Assignment Count
+    laLifecycleSettings: {
+        visibleStatuses: [],
+        visibleAges: [],
+        chartType: 'bar',
+        visibleCompanies: [], 
+        visibleContracts: [], 
+        assignmentStatus: 'all', 
+        // ========== START: THIS IS THE FIX ==========
+        assignmentGroups: {
+            visibleCounts: [0, 1, 2],
+            plusGroup: { from: 3, label: '3+ times' }
+        }
+        // ========== END: THIS IS THE FIX ==========
+    },
     
     // --- START: SEPARATE RANKING SETTINGS ---
     // Settings for Recruiter/Team
