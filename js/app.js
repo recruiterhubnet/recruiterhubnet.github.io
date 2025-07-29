@@ -17,12 +17,14 @@ import {
     openSettingsModal, openChartModal, addModalEventListeners
 } from './modals.js';
 import { initializeLeadAssignmentView, rerenderLeadAssignmentView } from './leadAssignmentView.js';
+import { initializeLeadLifecycleView, rerenderLeadLifecycleView } from './leadLifecycleView.js';
 import { initializePastDueView } from './pastDueView.js';
 import { initializeArrivalsView } from './arrivalsView.js';
 import { initializeTimeToEngageView, rerenderTimeToEngageView } from './timeToEngageView.js';
 import { initializeDelegationView, rerenderDelegationView } from './delegationView.js';
 import { initializeRankingsView, rerenderRankingsView } from './rankingsView.js';
 import { initializeSwitchboardView, renderAllSwitchboard } from './switchboardView.js';
+
 
 
 // Register Chart.js plugins globally
@@ -50,7 +52,7 @@ function initializeApp() {
             return;
         }
 
-        // --- Data Processing ---
+        // --- Data Processing (No changes here) ---
         state.allData = data.leadRiskData ? data.leadRiskData.map(row => ({
             ...row, date: new Date(row.date),
             unique_phone_reveals: Number(row.unique_phone_reveals || 0), total_phone_reveals: Number(row.total_phone_reveals || 0),
@@ -80,13 +82,11 @@ function initializeApp() {
             date: new Date(row.date),
             total_drug_tests: 1,
         })) : [];
-
-        // Process and store the recruiter_capture data for the Past Due view
         state.recruiterData = data.recruiterData ? data.recruiterData.map(row => {
             const newRow = {
                 date: new Date(row.date),
-                recruiter_name: row.recruiter, // Standardize to recruiter_name
-                team_name: row.team,           // Standardize to team_name
+                recruiter_name: row.recruiter, 
+                team_name: row.team,           
             };
             for (const key in row) {
                 if (key !== 'date' && key !== 'recruiter' && key !== 'team') {
@@ -99,8 +99,8 @@ function initializeApp() {
         state.profilerData = data.profilerData ? data.profilerData.map(row => {
             const newRow = {
                 date: new Date(row.date),
-                recruiter_name: row.profiler, // Standardize to recruiter_name
-                team_name: row.team,           // Standardize to team_name
+                recruiter_name: row.profiler, 
+                team_name: row.team,
             };
             for (const key in row) {
                 if (key !== 'date' && key !== 'profiler' && key !== 'team') {
@@ -146,11 +146,10 @@ function initializeApp() {
             });
         }
         state.mvrPspCdlData = transformedMvrPspCdlData;
-
-        // UPDATED: Include recruiterData for Past Due calculations in Rankings
+        state.leadLifecycleData = data.leadLifecycleData || [];
         state.combinedDataForRankings = [...state.allData, ...state.drugTestsData, ...state.mvrPspCdlData, ...state.recruiterData, ...state.profilerData];
 
-        // --- UI Initialization ---
+        // --- UI Initialization (No changes here) ---
         if (state.allData.length > 0) {
             const latestDate = state.allData[0].date;
             const dateString = latestDate.toISOString().split('T')[0];
@@ -176,6 +175,7 @@ function initializeApp() {
         loadProfilesFromStorage();
         populateAllDropdowns();
         initializeLeadAssignmentView();
+        initializeLeadLifecycleView(); // Initialize the new view
         initializeWorkingHours();
         initializePastDueView();
         initializeArrivalsView();
@@ -202,6 +202,7 @@ function addEventListeners() {
         delegation: document.getElementById('navDelegation'),
         rankings: document.getElementById('navRankings'),
         leadAssignment: document.getElementById('navLeadAssignment'),
+        leadLifecycle: document.getElementById('navLeadLifecycle'), // Add new button
         leadRisk: document.getElementById('navLeadRisk'),
         workingHours: document.getElementById('navWorkingHours'),
         pastDue: document.getElementById('navPastDue'),
@@ -214,6 +215,7 @@ function addEventListeners() {
         delegation: document.getElementById('delegationView'),
         rankings: document.getElementById('rankingsView'),
         leadAssignment: document.getElementById('leadAssignmentView'),
+        leadLifecycle: document.getElementById('leadLifecycleView'), // Add new view
         leadRisk: document.getElementById('leadRiskView'),
         workingHours: document.getElementById('workingHoursView'),
         pastDue: document.getElementById('pastDueView'),
@@ -237,6 +239,7 @@ function addEventListeners() {
     });
     navButtons.rankings.addEventListener('click', () => { setActiveView('rankings'); rerenderRankingsView(); });
     navButtons.leadAssignment.addEventListener('click', () => { setActiveView('leadAssignment'); rerenderLeadAssignmentView(); });
+    navButtons.leadLifecycle.addEventListener('click', () => { setActiveView('leadLifecycle'); rerenderLeadLifecycleView(); });
     navButtons.leadRisk.addEventListener('click', () => setActiveView('leadRisk'));
     navButtons.workingHours.addEventListener('click', () => { setActiveView('workingHours'); rerenderWorkingHoursView(); });
     navButtons.pastDue.addEventListener('click', () => setActiveView('pastDue'));
