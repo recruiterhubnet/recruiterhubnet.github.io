@@ -16,7 +16,10 @@ const state = {
         contracts: [],
         groups: [],
         visibility: {},
-        targets: {}
+        targets: {
+            team: {},
+            profiler: {}
+        }
     },
     activation: {
         teams: [],
@@ -55,7 +58,12 @@ function loadSettings() {
     const savedActivation = localStorage.getItem('delegationActivation');
 
     if (savedSettings) {
-        state.settings = JSON.parse(savedSettings);
+        const parsedSettings = JSON.parse(savedSettings);
+        // Ensure the new nested structure exists
+        if (!parsedSettings.targets || !parsedSettings.targets.team) {
+            parsedSettings.targets = { team: {}, profiler: {} };
+        }
+        state.settings = parsedSettings;
     }
     if (savedActivation) {
         state.activation.matrix = JSON.parse(savedActivation);
@@ -499,18 +507,17 @@ function renderTargetsTable() {
     const toDateValue = dateFilterInputs[1]?.value;
     let endDateForHistory = new Date();
     if (toDateValue) {
-        // Correctly handle date input to avoid timezone shifts
         const [year, month, day] = toDateValue.split('-').map(Number);
         endDateForHistory = new Date(year, month - 1, day);
     }
     endDateForHistory.setHours(23, 59, 59, 999);
-    
+
     const currentCompanyView = state.currentView;
 
     let historicalHeaderHtml = '';
     for (let i = 0; i < 10; i++) {
         const currentDate = new Date(endDateForHistory);
-        currentDate.setDate(endDateForHistory.getDate() - i); // Corrected loop start
+        currentDate.setDate(endDateForHistory.getDate() - i);
         const displayDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
         historicalHeaderHtml += `<th class="historical-day-header">${displayDate}</th>`;
     }
@@ -529,22 +536,23 @@ function renderTargetsTable() {
     container.innerHTML = visibleItems
         .filter(item => item.name.toUpperCase() !== 'ALL')
         .map(item => {
-            const companyTargets = state.settings.targets[currentCompanyView] || {};
+            // --- THIS IS THE FIX: Select the correct target object ---
+            const entityTargets = state.settings.targets[state.currentEntity] || {};
+            const companyTargets = entityTargets[currentCompanyView] || {};
             const targetValue = companyTargets[item.id] || 0;
 
             const historicalCols = [];
             for (let i = 0; i < 10; i++) {
                 const currentDate = new Date(endDateForHistory);
-                currentDate.setDate(endDateForHistory.getDate() - i); // Corrected loop start
-                
+                currentDate.setDate(endDateForHistory.getDate() - i);
+
                 const contractNames = item.contractIds 
                     ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name)
                     : [item.name];
-                
-                // Corrected date comparison to be timezone-safe
+
                 const dayTotal = appState.allData
                     .filter(d => {
-                        const rowDate = d.date; // d.date is already a Date object
+                        const rowDate = d.date;
                         return rowDate.getFullYear() === currentDate.getFullYear() &&
                                rowDate.getMonth() === currentDate.getMonth() &&
                                rowDate.getDate() === currentDate.getDate() &&
@@ -574,13 +582,15 @@ function getEfficiencyClass(value) {
 }
 
 function renderMasterView() {
+
     const delegationTable = document.getElementById('delegation-table');
     const { entitiesData: calculatedData } = state.cachedData[state.currentEntity] || {};
+    const currentCompanyView = state.currentView;
     if (!calculatedData || !Array.isArray(calculatedData)) {
         delegationTable.innerHTML = `<tbody><tr><td colspan="20">No data available.</td></tr></tbody>`;
         return;
     }
-    
+    const entityTargets = state.settings.targets[state.currentEntity] || {};
     const companies = [...new Set(appState.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))];
     const entities = state.currentEntity === 'team' ? state.activation.teams : state.activation.profilers;
     const visibleItems = [
@@ -595,53 +605,53 @@ function renderMasterView() {
     const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
 
     const contractSpecificRanks = new Map();
-    if (fromDate && toDate) {
-        visibleItems.forEach(item => {
-            const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
-        
-            const leadData = appState.allData.filter(row => {
-                const rowDate = new Date(row.date);
-                const companyMatch = row.company_name === 'ALL';
-                const contractMatch = contractNames.includes(row.contract_type);
-                const dateMatch = rowDate >= fromDate && rowDate <= toDate;
-                return companyMatch && contractMatch && dateMatch;
-            });
-        
-            const drugTestData = appState.drugTestsData.filter(row => {
-                const rowDate = new Date(row.date);
-                const companyMatch = true;
-                const contractMatch = contractNames.includes(row.contract_type);
-                const dateMatch = rowDate >= fromDate && rowDate <= toDate;
-                return companyMatch && contractMatch && dateMatch;
-            });
+if (fromDate && toDate) {
+    visibleItems.forEach(item => {
+        const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
 
-            const pastDueData = appState.recruiterData.filter(row => {
-                const rowDate = new Date(row.date);
-                return rowDate >= fromDate && rowDate <= toDate;
-            });
+        // --- START: Corrected Data Aggregation Logic ---
+        const matchesDateAndTeam = (row) => {
+            const rowDate = row.date ? new Date(row.date) : null;
+            if (!rowDate) return false;
+            const dateMatch = rowDate >= fromDate && rowDate <= toDate;
+            const entityTypeMatch = state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
+            return dateMatch && entityTypeMatch;
+        };
 
-            const mvrPspCdlData = appState.mvrPspCdlData.filter(row => {
-                const rowDate = new Date(row.date);
-                const dateMatch = rowDate >= fromDate && rowDate <= toDate;
-                const companyMatch = row.company_name === 'ALL';
-                const contractMatch = contractNames.includes(row.contract_type);
-                return dateMatch && companyMatch && contractMatch;
-            });
+        const standardFilter = (row) => {
+            if (!matchesDateAndTeam(row)) return false;
+            const contractMatch = contractNames.includes(row.contract_type);
+            return row.company_name === 'ALL' && contractMatch;
+        };
 
-            const combinedDataForRank = [...leadData, ...drugTestData, ...pastDueData, ...mvrPspCdlData];
+        const arrivalsFilter = (row) => {
+            if (!matchesDateAndTeam(row)) return false;
+            const contractMatch = contractNames.includes(row.contract_type);
+            return contractMatch;
+        };
 
-            const contractFilteredData = combinedDataForRank.filter(row => {
-                if (state.currentEntity === 'profiler') {
-                    return row.team_name === 'Profilers';
-                }
-                return row.team_name !== 'Profilers';
-            });
-        
-            const rankedForContract = calculateRankings(contractFilteredData, state.currentEntity, ['ALL'], contractNames);
-            const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
-            contractSpecificRanks.set(item.id, ranksMap);
-        });
-    }
+        const filteredLeadRiskData = appState.allData.filter(standardFilter);
+        const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(standardFilter);
+        const filteredPastDueData = appState.recruiterData.filter(matchesDateAndTeam);
+        const filteredProfilerData = appState.profilerData.filter(matchesDateAndTeam);
+        const filteredArrivalsData = appState.arrivalsData.filter(arrivalsFilter);
+        const filteredDrugTestsData = appState.drugTestsData.filter(arrivalsFilter);
+
+        const combinedDataForRank = [
+            ...filteredLeadRiskData,
+            ...filteredMvrPspCdlData,
+            ...filteredPastDueData,
+            ...filteredProfilerData,
+            ...filteredArrivalsData,
+            ...filteredDrugTestsData
+        ];
+        // --- END: Corrected Data Aggregation Logic ---
+
+        const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
+        const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
+        contractSpecificRanks.set(item.id, ranksMap);
+    });
+}
 
     const visibleEntities = calculatedData.filter(entityRow => {
         const entity = entities.find(e => e.name === entityRow.entity);
@@ -654,8 +664,8 @@ function renderMasterView() {
 
     let totalDailyTargetAllCompanies = 0;
     companies.forEach(company => {
-        const companyTargets = state.settings.targets[company] || {};
-        visibleItems.forEach(item => { totalDailyTargetAllCompanies += companyTargets[item.id] || 0; });
+    const companyTargets = entityTargets[company] || {}; // Use the corrected entityTargets object
+    visibleItems.forEach(item => { totalDailyTargetAllCompanies += companyTargets[item.id] || 0; });
     });
 
     const totalRankOfVisibleEntities = visibleEntities.reduce((sum, entity) => sum + (entity.rank || 0), 0);
@@ -666,7 +676,7 @@ function renderMasterView() {
         let totalProjectedLeads = 0;
 
         companies.forEach(company => {
-            const companyTargets = state.settings.targets[company] || {};
+            const companyTargets = entityTargets[company] || {}; // Use the corrected entityTargets object here as well
             const companyMatrix = state.activation.matrix[company] || {};
             let companyProjectedLeads = 0;
             const breakdownForCompany = [];
@@ -730,7 +740,7 @@ function renderMasterView() {
              if (finalData[i]) finalData[i].totalDailyLeads = Math.floor(finalData[i].totalDailyLeads);
         }
     }
-
+    state.masterViewData = finalData; 
     const companyTotals = {};
     companies.forEach(c => {
         companyTotals[c] = finalData.reduce((sum, item) => sum + (item.companyLeads[c] || 0), 0);
@@ -842,7 +852,8 @@ function renderCompanyView() {
         ...state.settings.contracts.filter(c => state.settings.visibility[c.id]),
         ...state.settings.groups.filter(g => state.settings.visibility[g.id])
     ];
-    const companyTargets = state.settings.targets[currentCompanyView] || {};
+    const entityTargets = state.settings.targets[state.currentEntity] || {};
+    const companyTargets = entityTargets[currentCompanyView] || {};
     const companyMatrix = state.activation.matrix[currentCompanyView] || {};
 
     const visibleEntities = calculatedData.filter(entityRow => {
@@ -1082,6 +1093,7 @@ export function initializeDelegationView() {
     console.log("Delegation view initialized.");
     loadSettings();
     generateSettingsFromState();
+    
     // Set default dates
     const dateFilterContainer = document.getElementById('date-filters');
     if (dateFilterContainer) {
@@ -1104,7 +1116,12 @@ export function initializeDelegationView() {
 
     const delegationView = document.getElementById('delegationView');
     const settingsModal = document.getElementById('delegationSettingsModal');
-    const openSettingsBtn = delegationView.querySelector('.settings-btn');
+    
+    const openSettingsBtn = document.getElementById('openDelegationSettingsBtn');
+    const copyBtn = document.getElementById('copyDelegationBtn');
+    const downloadBtn = document.getElementById('downloadDelegationBtn');
+    const downloadImageBtn = document.getElementById('downloadImageBtn'); // ADD THIS LINE
+
     const closeSettingsBtn = document.getElementById('closeDelegationSettingsBtn');
     const saveSettingsBtn = document.getElementById('saveDelegationSettingsBtn');
     
@@ -1113,20 +1130,37 @@ export function initializeDelegationView() {
         delegationTable.addEventListener('click', handleSortClick);
     }
     
-    openSettingsBtn.addEventListener('click', () => {
-        settingsModal.classList.remove('hidden');
-        renderColumnManagement();
-        const currentEntityType = document.querySelector('.matrix-entity-switcher.active')?.dataset.entity || 'team';
-        renderActivationMatrix(currentEntityType);
-    });
+    if (openSettingsBtn) {
+        openSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+            renderColumnManagement();
+            const currentEntityType = document.querySelector('.matrix-entity-switcher.active')?.dataset.entity || 'team';
+            renderActivationMatrix(currentEntityType);
+        });
+    }
 
-    closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+    if (downloadImageBtn) { // ADD THIS BLOCK
+        downloadImageBtn.addEventListener('click', downloadDelegationAsImage);
+    }
 
-    saveSettingsBtn.addEventListener('click', () => {
-        saveSettings();
-        settingsModal.classList.add('hidden');
-        renderTable();
-    });
+    if (copyBtn) {
+        copyBtn.addEventListener('click', copyDelegationSummary);
+    }
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadDelegationSummary);
+    }
+
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+    }
+
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            saveSettings();
+            settingsModal.classList.add('hidden');
+            renderTable();
+        });
+    }
 
     settingsModal.addEventListener('click', (e) => {
         const target = e.target;
@@ -1273,10 +1307,15 @@ export function initializeDelegationView() {
             const key = e.target.dataset.key;
             const companyView = state.currentView;
             if (companyView === 'master') return;
-            if (!state.settings.targets[companyView]) {
-                state.settings.targets[companyView] = {};
+    
+            // --- THIS IS THE FIX: Ensure nested objects exist before saving ---
+            if (!state.settings.targets[state.currentEntity]) {
+                state.settings.targets[state.currentEntity] = {};
             }
-            state.settings.targets[companyView][key] = parseInt(e.target.value, 10) || 0;
+            if (!state.settings.targets[state.currentEntity][companyView]) {
+                state.settings.targets[state.currentEntity][companyView] = {};
+            }
+            state.settings.targets[state.currentEntity][companyView][key] = parseInt(e.target.value, 10) || 0;
             renderTable();
         }
     });
@@ -1294,8 +1333,7 @@ export function initializeDelegationView() {
             state.currentView = button.dataset.view;
             calculateAndCacheAllData();
             renderTable();
-            delegationView.querySelector('#targets-card').style.display = state.currentView === 'master' ? 'none' : 'block';
-            delegationView.querySelector('#date-filters').style.visibility = state.currentView === 'master' ? 'hidden' : 'visible';
+            updateDelegationViewVisibility(); // Call the new function here
         }
     });
 
@@ -1315,12 +1353,10 @@ export function initializeDelegationView() {
             const targetRow = document.getElementById(targetId);
             if (!targetRow) return;
 
-            // Toggle the visibility and icon for the clicked row only
             const isVisible = targetRow.classList.toggle('visible');
             e.target.classList.toggle('fa-minus-circle', isVisible);
             e.target.classList.toggle('fa-plus-circle', !isVisible);
 
-            // Toggle the highlight on the corresponding header
             const contractGroup = e.target.closest('td')?.dataset.contractGroup;
             if (contractGroup) {
                 const header = document.querySelector(`#delegation-table th[data-contract-group="${contractGroup}"]`);
@@ -1331,10 +1367,278 @@ export function initializeDelegationView() {
         }
     });
 
-    delegationView.querySelector('#targets-card').style.display = state.currentView === 'master' ? 'none' : 'block';
-    delegationView.querySelector('#date-filters').style.visibility = state.currentView === 'master' ? 'hidden' : 'visible';
+    // Initial visibility check
+    const isMasterView = state.currentView === 'master';
+    // --- Tooltip Logic for Copy/Download Buttons ---
+    const actionsContainer = document.getElementById('delegationActionsContainer');
+    let tooltipElement = null;
+
+    if (actionsContainer) {
+        actionsContainer.addEventListener('mouseover', (e) => {
+            const button = e.target.closest('button');
+            if (button && button.dataset.tooltip) {
+                // Remove any existing tooltip
+                if (tooltipElement) tooltipElement.remove();
+
+                // Create new tooltip
+                tooltipElement = document.createElement('div');
+                tooltipElement.className = 'delegation-tooltip';
+                tooltipElement.textContent = button.dataset.tooltip;
+                document.body.appendChild(tooltipElement);
+
+                // Position it
+                const btnRect = button.getBoundingClientRect();
+                const tooltipRect = tooltipElement.getBoundingClientRect();
+                
+                tooltipElement.style.left = `${btnRect.left + (btnRect.width / 2) - (tooltipRect.width / 2)}px`;
+                tooltipElement.style.top = `${btnRect.top - tooltipRect.height - 8}px`; // 8px above the button
+            }
+        });
+
+        actionsContainer.addEventListener('mouseout', () => {
+            if (tooltipElement) {
+                tooltipElement.remove();
+                tooltipElement = null;
+            }
+        });
+    }
+
+    updateDelegationViewVisibility();
+
 }
 export function rerenderDelegationView() {
     calculateAndCacheAllData();
     renderTable();
+    updateDelegationViewVisibility(); // Add this line
+}
+function downloadAsTextFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ADD THIS NEW FUNCTION at the end of the file
+function generateAndDownloadSummary() {
+    // This feature is only available in the Master View, which calculates the data.
+    if (state.currentView !== 'master') {
+        alert("This feature is only available in Master View.");
+        return;
+    }
+
+    const delegationData = state.masterViewData; // Use cached data
+    if (!delegationData || delegationData.length === 0) {
+        alert("No data available to generate a summary.");
+        return;
+    }
+
+    let summary = `DELEGATION SUMMARY - ${state.currentEntity.toUpperCase()}\n`;
+    summary += `Generated on: ${new Date().toLocaleString()}\n\n`;
+
+    delegationData.forEach(entityRow => {
+        summary += `--- ${entityRow.entity} ---\n`;
+        const breakdownParts = [];
+        const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
+
+        for (const company of sortedCompanies) {
+            const contracts = entityRow.companyBreakdowns[company]
+                .filter(b => b.projDel > 0) // Only include contracts with projected delegation
+                .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+            
+            if (contracts.length > 0) {
+                breakdownParts.push(`${company}: ${contracts.join(', ')}`);
+            }
+        }
+        
+        if (breakdownParts.length > 0) {
+            summary += breakdownParts.join(' | ') + '\n';
+        } else {
+            summary += 'No projected delegations.\n';
+        }
+        summary += '\n'; // Add a blank line for readability
+    });
+    
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const filename = `Delegation_Summary_${state.currentEntity}_${dateString}.txt`;
+    
+    downloadAsTextFile(summary, filename);
+}
+// ADD THIS NEW HELPER FUNCTION
+function generateDelegationSummaryText() {
+    if (state.currentView !== 'master' || !state.masterViewData || state.masterViewData.length === 0) {
+        return null;
+    }
+
+    // --- THIS IS THE FIX: Get a list of all visible contract/group IDs ---
+    const visibleItemIds = [
+        ...state.settings.contracts.filter(c => state.settings.visibility[c.id]).map(c => c.id),
+        ...state.settings.groups.filter(g => state.settings.visibility[g.id]).map(g => g.id)
+    ];
+    // Find the ID for the 'ALL' contract to specifically exclude it
+    const allContractId = state.settings.contracts.find(c => c.name.toUpperCase() === 'ALL')?.id;
+
+
+    let summary = `DELEGATION SUMMARY - ${state.currentEntity.toUpperCase()}\n`;
+    summary += `Generated on: ${new Date().toLocaleString()}\n\n`;
+
+    state.masterViewData.forEach(entityRow => {
+        summary += `--- ${entityRow.entity} ---\n`;
+        const breakdownParts = [];
+        const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
+
+        for (const company of sortedCompanies) {
+            const contracts = entityRow.companyBreakdowns[company]
+                // --- THIS IS THE FIX: Filter the contracts based on visibility ---
+                .filter(b => {
+                    const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
+                    // Exclude if it has no projection, is not visible, or is the 'ALL' contract
+                    return b.projDel > 0 && item && visibleItemIds.includes(item.id) && item.id !== allContractId;
+                })
+                .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+            
+            if (contracts.length > 0) {
+                breakdownParts.push(`${company}: ${contracts.join(', ')}`);
+            }
+        }
+        
+        summary += breakdownParts.length > 0 ? breakdownParts.join(' | ') + '\n\n' : 'No projected delegations.\n\n';
+    });
+    
+    return summary;
+}
+
+// ADD THIS NEW FUNCTION FOR THE COPY ACTION
+function copyDelegationSummary() {
+    const summaryText = generateDelegationSummaryText();
+    if (!summaryText) {
+        alert("No data available to copy.");
+        return;
+    }
+
+    navigator.clipboard.writeText(summaryText).then(() => {
+        const copyBtn = document.getElementById('copyDelegationBtn');
+        const originalContent = copyBtn.innerHTML;
+        copyBtn.innerHTML = `<i class="fas fa-check"></i> Copied!`;
+        setTimeout(() => {
+            copyBtn.innerHTML = originalContent;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        alert('Failed to copy summary. Please check console for details.');
+    });
+}
+
+// ADD THIS NEW FUNCTION FOR THE DOWNLOAD ACTION
+function downloadDelegationSummary() {
+    const summaryText = generateDelegationSummaryText();
+    if (!summaryText) {
+        alert("No data available to download.");
+        return;
+    }
+    
+    const blob = new Blob([summaryText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    a.download = `Delegation_Summary_${state.currentEntity}_${dateString}.txt`;
+    a.href = url;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+function downloadDelegationAsImage() {
+    if (state.currentView !== 'master' || !state.masterViewData || state.masterViewData.length === 0) {
+        alert("No data available to generate an image. This feature is only available in Master View.");
+        return;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'delegation-summary-image-container';
+
+    // --- THIS IS THE FIX: Get a list of all visible contract/group IDs ---
+    const visibleItemIds = [
+        ...state.settings.contracts.filter(c => state.settings.visibility[c.id]).map(c => c.id),
+        ...state.settings.groups.filter(g => state.settings.visibility[g.id]).map(g => g.id)
+    ];
+    const allContractId = state.settings.contracts.find(c => c.name.toUpperCase() === 'ALL')?.id;
+
+    let innerHTML = `<h1>DELEGATION SUMMARY - ${state.currentEntity.toUpperCase()}</h1>`;
+    innerHTML += `<p class="summary-subtitle">Generated on: ${new Date().toLocaleString()}</p>`;
+
+    state.masterViewData.forEach(entityRow => {
+        innerHTML += `<div class="entity-block">`;
+        innerHTML += `<h2>${entityRow.entity}</h2>`;
+        
+        const breakdownParts = [];
+        const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
+
+        for (const company of sortedCompanies) {
+            const contracts = entityRow.companyBreakdowns[company]
+                // --- THIS IS THE FIX: Filter the contracts based on visibility ---
+                .filter(b => {
+                    const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
+                    return b.projDel > 0 && item && visibleItemIds.includes(item.id) && item.id !== allContractId;
+                })
+                .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+            
+            if (contracts.length > 0) {
+                const companyClass = `company-${company.toLowerCase().replace(/\s+/g, '-')}`;
+                breakdownParts.push(`<strong class="${companyClass}">${company}:</strong> ${contracts.join(', ')}`);
+            }
+        }
+        
+        const breakdownText = breakdownParts.length > 0 ? breakdownParts.join(' &nbsp; | &nbsp; ') : 'No projected delegations.';
+        innerHTML += `<p>${breakdownText}</p>`;
+        innerHTML += `</div>`;
+    });
+
+    container.innerHTML = innerHTML;
+    document.body.appendChild(container);
+
+    html2canvas(container, {
+        backgroundColor: '#111827',
+        scale: 2
+    }).then(canvas => {
+        const a = document.createElement('a');
+        const date = new Date();
+        const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        a.download = `Delegation_Summary_${state.currentEntity}_${dateString}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+    }).catch(err => {
+        console.error("Error generating image:", err);
+        alert("Could not generate image. See console for details.");
+    }).finally(() => {
+        document.body.removeChild(container);
+    });
+}
+// ADD THIS NEW FUNCTION
+function updateDelegationViewVisibility() {
+    const delegationView = document.getElementById('delegationView');
+    if (!delegationView) return;
+
+    const isMasterView = state.currentView === 'master';
+    const actionsContainer = document.getElementById('delegationActionsContainer');
+    const targetsCard = delegationView.querySelector('#targets-card');
+    const dateFilters = delegationView.querySelector('#date-filters');
+
+    if (targetsCard) {
+        targetsCard.style.display = isMasterView ? 'none' : 'block';
+    }
+    if (dateFilters) {
+        dateFilters.style.visibility = isMasterView ? 'hidden' : 'visible';
+    }
+    if (actionsContainer) {
+        actionsContainer.style.display = isMasterView ? 'flex' : 'none';
+    }
 }
