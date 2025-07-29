@@ -2,6 +2,8 @@ import { state as appState } from './state.js'; // Import the main app state
 import { calculateRankings } from './rankingsView.js';
 import { formatDuration, getSelectedValues } from './ui.js';
 
+let activeTooltip = null;
+
 // --- LOCAL STATE & SETTINGS ---
 const state = {
     currentView: 'master',
@@ -1126,9 +1128,50 @@ export function initializeDelegationView() {
     const saveSettingsBtn = document.getElementById('saveDelegationSettingsBtn');
     
     const delegationTable = document.getElementById('delegation-table');
-    if (delegationTable) {
-        delegationTable.addEventListener('click', handleSortClick);
-    }
+if (delegationTable) {
+    delegationTable.addEventListener('click', handleSortClick);
+
+    // --- ADD THIS ENTIRE BLOCK ---
+    delegationTable.addEventListener('mouseover', (e) => {
+        const tooltipContainer = e.target.closest('.th-tooltip-container');
+        if (!tooltipContainer) return;
+
+        if (activeTooltip) activeTooltip.remove();
+
+        const tooltipTemplate = tooltipContainer.querySelector('.th-tooltip-text');
+        if (!tooltipTemplate) return;
+
+        activeTooltip = document.createElement('div');
+        activeTooltip.className = 'dynamic-tooltip'; // Use a generic class for styling
+        activeTooltip.innerHTML = tooltipTemplate.innerHTML;
+        document.body.appendChild(activeTooltip);
+
+        const headerRect = tooltipContainer.getBoundingClientRect();
+        const tooltipRect = activeTooltip.getBoundingClientRect();
+
+        let top = headerRect.top - tooltipRect.height - 8; // 8px margin
+        let left = headerRect.left + (headerRect.width / 2) - (tooltipRect.width / 2);
+
+        if (left < 8) left = 8;
+        if (left + tooltipRect.width > window.innerWidth - 8) {
+            left = window.innerWidth - tooltipRect.width - 8;
+        }
+        if (top < 8) {
+            top = headerRect.bottom + 8;
+        }
+
+        activeTooltip.style.left = `${left}px`;
+        activeTooltip.style.top = `${top}px`;
+    });
+
+    delegationTable.addEventListener('mouseout', () => {
+        if (activeTooltip) {
+            activeTooltip.remove();
+            activeTooltip = null;
+        }
+    });
+    // --- END OF ADDED BLOCK ---
+}
     
     if (openSettingsBtn) {
         openSettingsBtn.addEventListener('click', () => {
