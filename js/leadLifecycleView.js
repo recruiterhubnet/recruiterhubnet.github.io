@@ -288,7 +288,7 @@ function renderTable(pivotedData) {
 
 
     let tableHtml = `
-        <div class="table-container" style="max-height: 60vh;">
+        <div class="table-container">
             <table class="min-w-full text-sm text-left lead-lifecycle-table">
                 <thead class="sticky top-0 z-10">
                     <tr class="bg-gray-700">
