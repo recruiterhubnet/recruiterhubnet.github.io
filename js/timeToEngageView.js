@@ -2,19 +2,19 @@
 
 import { state } from './state.js';
 import { tteColumnsConfig } from './config.js';
-import { populateFilters, formatDuration, formatNumber } from './ui.js'; // Import formatDuration and formatNumber
+import { populateFilters, formatDuration, formatNumber } from './ui.js';
 
 let isInitialized = false;
-let activeTooltip = null; // To hold the currently visible tooltip element
+let activeTooltip = null;
 
 // --- HELPER FUNCTIONS ---
 
 function parseTTEValue(value) {
     if (value === "N/A" || value === null || value === undefined) {
-        return null; // Represents no data, will be ignored
+        return null;
     }
     if (value === "-") {
-        return Infinity; // Represents a lead that was not reached, treated as infinite time
+        return Infinity;
     }
     const num = parseFloat(value);
     return isNaN(num) ? null : num;
@@ -48,14 +48,12 @@ export function rerenderTimeToEngageView() {
 }
 
 function populateTimeToEngageFilters() {
-    // --- Create Default Contract List ---
     const defaultContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
     const defaultContractsList = defaultContracts.map(c => ({ contract_type: c }));
 
     populateFilters(document.getElementById('tteRecruiterFilter'), state.allData, 'recruiter_name', 'All Recruiters');
     populateFilters(document.getElementById('tteTeamFilter'), state.allData, 'team_name', 'All Teams');
     populateFilters(document.getElementById('tteCompanyFilter'), state.allData, 'company_name', null);
-    // Use default list for Time to Engage
     populateFilters(document.getElementById('tteContractFilter'), defaultContractsList, 'contract_type', null);
 }
 
@@ -63,9 +61,28 @@ function addTTEEventListeners() {
     const filters = ['tteRecruiterFilter', 'tteTeamFilter', 'tteCompanyFilter', 'tteContractFilter', 'tteDateFromFilter', 'tteDateToFilter', 'tteLeadTypeFilter'];
     filters.forEach(id => document.getElementById(id).addEventListener('change', renderTimeToEngage));
 
+    // MODIFICATION START: Added listeners for the new data type switcher
+    document.getElementById('tteDataTypeStandardBtn').addEventListener('click', () => {
+        if (state.tteDataType === 'standard') return;
+        state.tteDataType = 'standard';
+        document.getElementById('tteDataTypeStandardBtn').classList.add('active');
+        document.getElementById('tteDataTypeHotFreshBtn').classList.remove('active');
+        document.getElementById('tteLeadTypeFilterContainer').classList.remove('hidden');
+        renderTimeToEngage();
+    });
+
+    document.getElementById('tteDataTypeHotFreshBtn').addEventListener('click', () => {
+        if (state.tteDataType === 'hotfresh') return;
+        state.tteDataType = 'hotfresh';
+        document.getElementById('tteDataTypeHotFreshBtn').classList.add('active');
+        document.getElementById('tteDataTypeStandardBtn').classList.remove('active');
+        document.getElementById('tteLeadTypeFilterContainer').classList.add('hidden');
+        renderTimeToEngage();
+    });
+    // MODIFICATION END
+
     const tteView = document.getElementById('timeToEngageView');
 
-    // Delegated listener for sorting
     tteView.addEventListener('click', (e) => {
         const header = e.target.closest('.sortable');
         if (header) {
@@ -89,7 +106,6 @@ function addTTEEventListeners() {
         renderTimeToEngage();
     });
 
-    // --- NEW: Universal Tooltip Logic ---
     tteView.addEventListener('mouseover', (e) => {
         const icon = e.target.closest('.tooltip-icon');
         if (!icon) return;
@@ -102,13 +118,13 @@ function addTTEEventListeners() {
         if (!tooltipTextEl || !tooltipTextEl.innerHTML) return;
 
         activeTooltip = document.createElement('div');
-        activeTooltip.className = 'tooltip-text'; // Use the base class for styling
+        activeTooltip.className = 'tooltip-text';
         activeTooltip.style.cssText = `
             visibility: visible;
             opacity: 1;
-            position: fixed; /* Use fixed positioning to escape containers */
-            z-index: 110; /* Ensure it's above other elements */
-            width: 350px; /* Set width from original element */
+            position: fixed;
+            z-index: 110;
+            width: 350px;
         `;
         activeTooltip.innerHTML = tooltipTextEl.innerHTML;
         document.body.appendChild(activeTooltip);
@@ -119,7 +135,6 @@ function addTTEEventListeners() {
         let top = iconRect.bottom + 8;
         let left = iconRect.left + (iconRect.width / 2) - (tooltipRect.width / 2);
 
-        // Prevent from going off-screen
         if (left < 8) left = 8;
         if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 8;
         if (top + tooltipRect.height > window.innerHeight) top = iconRect.top - tooltipRect.height - 8;
@@ -150,12 +165,28 @@ function sortTTEData(key) {
             tteSortConfig.direction = 'asc';
         }
     }
-    renderTimeToEngage(); // Re-render to apply sort
+    renderTimeToEngage();
 }
 
-function getConstructedKey(pKey, leadType) {
-    return `p_${pKey.substring(1)}_engage_${leadType}`;
+// MODIFICATION START: Updated function to be dynamic
+function getConstructedKey(pKey, row) {
+    const pValue = pKey.substring(1); 
+    if (state.tteDataType === 'standard') {
+        const leadType = document.getElementById('tteLeadTypeFilter').value;
+        return `p_${pValue}_engage_${leadType}`;
+    } else { // 'hotfresh' mode
+        // CORRECT: Checks the team name for each row.
+        if (row.team_name === 'Profilers') {
+            // If the team is 'Profilers', it uses the 'fresh_leads' data column.
+            return `p_${pValue}_engage_fresh_leads`;
+        } 
+        else {
+            // For any other team, it uses the standard 'hot leads' data column.
+            return `p_${pValue}_engage`;
+        }
+    }
 }
+// MODIFICATION END
 
 function processAndSortTTEData() {
     const recruiterFilter = document.getElementById('tteRecruiterFilter').value;
@@ -164,7 +195,9 @@ function processAndSortTTEData() {
     const contractFilter = document.getElementById('tteContractFilter').value;
     const fromDate = document.getElementById('tteDateFromFilter').value;
     const toDate = document.getElementById('tteDateToFilter').value;
-    const leadType = document.getElementById('tteLeadTypeFilter').value;
+    
+    // MODIFICATION: No longer need leadType here as it's handled dynamically
+    // const leadType = document.getElementById('tteLeadTypeFilter').value;
 
     const baseFilteredData = state.allData.filter(row => {
         const rowDate = row.date.toISOString().split('T')[0];
@@ -177,50 +210,41 @@ function processAndSortTTEData() {
     });
 
     let processedData;
+    const percentileKeys = Object.keys(tteColumnsConfig).filter(key => key.startsWith('p'));
 
+    // MODIFICATION START: Updated processing logic for both Stub and Average modes
     if (state.tteViewMode === 'Stub') {
         processedData = baseFilteredData.map(row => {
             const newRow = { ...row };
-            Object.keys(tteColumnsConfig).forEach(pKey => {
-                if (pKey.startsWith('p')) {
-                    ['new', 'old', 'total'].forEach(type => {
-                        const newKey = getConstructedKey(pKey, type);
-                        newRow[newKey] = parseTTEValue(row[newKey]);
-                    });
-                }
+            percentileKeys.forEach(pKey => {
+                const constructedKey = getConstructedKey(pKey, row);
+                newRow[`display_${pKey}`] = parseTTEValue(row[constructedKey]);
             });
             return newRow;
         });
     } else { // Average Mode
         const recruiterMap = new Map();
-        const percentileKeys = Object.keys(tteColumnsConfig).filter(key => key.startsWith('p'));
 
         baseFilteredData.forEach(row => {
             if (!recruiterMap.has(row.recruiter_name)) {
                 recruiterMap.set(row.recruiter_name, {
                     recruiter_name: row.recruiter_name,
                     team_name: row.team_name,
-                    ...Object.fromEntries(percentileKeys.flatMap(pKey => [
-                        [getConstructedKey(pKey, 'new'), { finite: [], infinite: 0 }],
-                        [getConstructedKey(pKey, 'old'), { finite: [], infinite: 0 }],
-                        [getConstructedKey(pKey, 'total'), { finite: [], infinite: 0 }]
-                    ]))
+                    percentile_values: Object.fromEntries(percentileKeys.map(pKey => [pKey, { finite: [], infinite: 0 }]))
                 });
             }
 
             const recruiterData = recruiterMap.get(row.recruiter_name);
             percentileKeys.forEach(pKey => {
-                ['new', 'old', 'total'].forEach(type => {
-                    const key = getConstructedKey(pKey, type);
-                    const parsedValue = parseTTEValue(row[key]);
-                    if (parsedValue !== null) {
-                        if (isFinite(parsedValue)) {
-                            recruiterData[key].finite.push(parsedValue);
-                        } else {
-                            recruiterData[key].infinite++;
-                        }
+                const key = getConstructedKey(pKey, row);
+                const parsedValue = parseTTEValue(row[key]);
+                if (parsedValue !== null) {
+                    if (isFinite(parsedValue)) {
+                        recruiterData.percentile_values[pKey].finite.push(parsedValue);
+                    } else {
+                        recruiterData.percentile_values[pKey].infinite++;
                     }
-                });
+                }
             });
         });
 
@@ -230,90 +254,62 @@ function processAndSortTTEData() {
                 team_name: recruiterData.team_name
             };
             percentileKeys.forEach(pKey => {
-                ['new', 'old', 'total'].forEach(type => {
-                   const key = getConstructedKey(pKey, type);
-                   const { finite, infinite } = recruiterData[key]; // 'finite' is an array of numbers, 'infinite' is a count
+                const { finite, infinite } = recruiterData.percentile_values[pKey];
+                const valuesForMedian = [...finite];
+                for (let i = 0; i < infinite; i++) {
+                    valuesForMedian.push(Infinity);
+                }
 
-                   // Create a combined array for median calculation, ensuring 'infinite' occurrences are treated as Infinity
-                   const valuesForMedian = [...finite];
-                   for (let i = 0; i < infinite; i++) {
-                       valuesForMedian.push(Infinity); // <--- CHANGED: Push Infinity for each 'infinite' occurrence
-                   }
-
-                   if (valuesForMedian.length > 0) {
-                       // Calculate median of all relevant values (finite and Infinity)
-                       const sorted = [...valuesForMedian].sort((a, b) => a - b); // Sorts Infinity to the end
-                       const mid = Math.floor(sorted.length / 2);
-
-                       // Handle median calculation for both odd and even number of elements
-                       if (sorted.length % 2 === 0) {
-                           // If the sorted array has an even number of elements, median is the average of the two middle elements.
-                           // If one or both middle elements are Infinity, the median is Infinity.
-                           if (isFinite(sorted[mid - 1]) && isFinite(sorted[mid])) {
-                               averagedData[key] = (sorted[mid - 1] + sorted[mid]) / 2;
-                           } else {
-                               averagedData[key] = Infinity; // If one or both middle values are Infinity, the median is Infinity
-                           }
-                       } else {
-                           // If the sorted array has an odd number of elements, median is the middle element.
-                           averagedData[key] = sorted[mid];
-                       }
-                   } else { // No finite values and no infinite values (meaning only nulls/N/A were present)
-                       averagedData[key] = null;
-                   }
-                });
-           });
+                if (valuesForMedian.length > 0) {
+                    const sorted = valuesForMedian.sort((a, b) => a - b);
+                    const mid = Math.floor(sorted.length / 2);
+                    if (sorted.length % 2 === 0) {
+                        averagedData[`display_${pKey}`] = (isFinite(sorted[mid - 1]) && isFinite(sorted[mid])) ? (sorted[mid - 1] + sorted[mid]) / 2 : Infinity;
+                    } else {
+                        averagedData[`display_${pKey}`] = sorted[mid];
+                    }
+                } else {
+                    averagedData[`display_${pKey}`] = null;
+                }
+            });
             return averagedData;
         });
     }
 
-    const checkKeys = Object.keys(tteColumnsConfig).filter(key => key.startsWith('p'));
     let finalData = processedData.filter(row => {
-        return checkKeys.some(pKey => {
-            const key = getConstructedKey(pKey, leadType);
-            const value = row[key];
+        return percentileKeys.some(pKey => {
+            const value = row[`display_${pKey}`];
             return value !== null && value !== undefined;
         });
     });
+    // MODIFICATION END
 
-    // --- SORTING LOGIC ---
     const { key, direction } = state.tteSortConfig;
     const dir = direction === 'asc' ? 1 : -1;
 
     finalData.sort((a, b) => {
-        let valA, valB;
-
-        if (key.startsWith('p')) {
-            const constructedKey = getConstructedKey(key, leadType);
-            valA = a[constructedKey];
-            valB = b[constructedKey];
-        } else {
-            valA = a[key];
-            valB = b[key];
-        }
+        // MODIFICATION START: Sort by the dynamic 'display_' properties for percentiles
+        const sortKey = key.startsWith('p') ? `display_${key}` : key;
+        let valA = a[sortKey];
+        let valB = b[sortKey];
+        // MODIFICATION END
         
-        // Handle null, undefined, and Infinity
         if (valA === valB) return 0;
         if (valA === null || valA === undefined) return 1 * dir;
         if (valB === null || valB === undefined) return -1 * dir;
-        if (!isFinite(valA) && isFinite(valB)) return 1 * dir; // Infinity goes to the end
+        if (!isFinite(valA) && isFinite(valB)) return 1 * dir;
         if (isFinite(valA) && !isFinite(valB)) return -1 * dir;
         if (!isFinite(valA) && !isFinite(valB)) return 0;
 
-
-       // Explicitly handle date type comparison using timestamps
        if (tteColumnsConfig[key]?.type === 'date') {
-        // Ensure values are Date objects or can be converted to numbers (timestamps)
         const timeA = valA instanceof Date ? valA.getTime() : (typeof valA === 'string' ? new Date(valA).getTime() : Number(valA));
         const timeB = valB instanceof Date ? valB.getTime() : (typeof valB === 'string' ? new Date(valB).getTime() : Number(valB));
         return (timeA - timeB) * dir;
     }
-    // Handle number type comparison
     if (tteColumnsConfig[key]?.type === 'number') {
         return (Number(valA) - Number(valB)) * dir;
     }
 
-    // Corrected logic: Ensure values are explicitly converted to strings for comparison
     const stringA = (valA !== null && valA !== undefined) ? String(valA).trim().toLowerCase() : '';
     const stringB = (valB !== null && valB !== undefined) ? String(valB).trim().toLowerCase() : '';
     return stringA.localeCompare(stringB) * dir;
@@ -369,7 +365,6 @@ function renderTTEHeaders() {
         headerHtml += `<span>${conf.label}</span>`;
         
         if (isTooltipColumn) {
-             // The tooltip div is now just a hidden data container
              headerHtml += `<div class="tooltip-container ml-1"><i class="fas fa-question-circle tooltip-icon text-gray-400 hover:text-white cursor-pointer"></i><div class="tooltip-text" style="display: none;">${tableTooltipContent}</div></div>`;
         }
 
@@ -383,7 +378,6 @@ function renderTTEHeaders() {
 
 function renderTTETable(data) {
     const tableBody = document.getElementById('tteTableBody');
-    const leadType = document.getElementById('tteLeadTypeFilter').value;
     const isDayView = state.tteViewMode === 'Stub';
 
     if (!data || data.length === 0) {
@@ -396,49 +390,39 @@ function renderTTETable(data) {
     const columnSortedValues = {};
 
     percentileKeys.forEach(pKey => {
-        const key = getConstructedKey(pKey, leadType);
-        const values = data.map(row => row[key]).filter(val => val !== null && isFinite(val));
-        if (values.length > 0) {
-            columnSortedValues[pKey] = values.sort((a, b) => a - b);
-        } else {
-            columnSortedValues[pKey] = [];
-        }
+        const values = data.map(row => row[`display_${pKey}`]).filter(val => val !== null && isFinite(val));
+        columnSortedValues[pKey] = values.length > 0 ? values.sort((a, b) => a - b) : [];
     });
 
     const getHeatmapColor = (value, pKey) => {
         const sortedValues = columnSortedValues[pKey];
-
         if (value === null || !isFinite(value) || !sortedValues || sortedValues.length === 0) {
             return { bgColor: 'bg-gray-800/40', textColor: 'text-white' };
         }
         if (sortedValues[0] === sortedValues[sortedValues.length - 1]) return { bgColor: 'bg-green-700/50', textColor: 'text-white' };
         
         let index = sortedValues.findIndex(val => val >= value);
-        if (index === -1) {
-            index = sortedValues.length - 1;
-        }
-        const percentage = sortedValues.length > 1 ? index / (sortedValues.length - 1) : 0;
+        if (index === -1) index = sortedValues.length - 1;
         
+        const percentage = sortedValues.length > 1 ? index / (sortedValues.length - 1) : 0;
         const colorScale = ['#166534', '#15803d', '#16a34a', '#22c55e', '#facc15', '#fbbf24', '#f97316', '#ef4444', '#dc2626', '#b91c1c'];
-        const shadeIndex = Math.floor(percentage * colorScale.length);
-        const color = colorScale[Math.min(shadeIndex, colorScale.length - 1)];
+        const shadeIndex = Math.min(Math.floor(percentage * colorScale.length), colorScale.length - 1);
+        const color = colorScale[shadeIndex];
 
         const bgColorClass = `bg-[${color}]`;
-        let textColorClass = 'text-white';
-        if (color === '#facc15' || color === '#fbbf24') {
-            textColorClass = 'text-gray-900';
-        }
+        const textColorClass = (color === '#facc15' || color === '#fbbf24') ? 'text-gray-900' : 'text-white';
         return { bgColor: bgColorClass, textColor: textColorClass };
     };
 
     const tableHTML = data.map(row => {
+        // MODIFICATION START: Use the dynamic 'display_' properties
         const percentileCells = percentileKeys.map(pKey => {
-            const key = getConstructedKey(pKey, leadType);
-            const value = row[key];
+            const value = row[`display_${pKey}`];
             const { bgColor, textColor } = getHeatmapColor(value, pKey);
             const formattedValue = value === Infinity ? '∞' : formatDuration(value);
             return `<td class="py-1.5 px-1 whitespace-nowrap text-center font-mono ${bgColor} ${textColor}">${formattedValue}</td>`;
         }).join('');
+        // MODIFICATION END
         
         const dateCell = isDayView 
             ? `<td class="py-1.5 px-2 whitespace-nowrap text-left text-gray-400">${new Date(row.date).toLocaleDateString()}</td>`
@@ -458,7 +442,6 @@ function renderTTETableFooter(data) {
     if (!footerRow) return;
     footerRow.innerHTML = '';
 
-    const leadType = document.getElementById('tteLeadTypeFilter').value;
     const isDayView = state.tteViewMode === 'Stub';
     const visibleColumns = Object.entries(tteColumnsConfig)
         .filter(([key]) => isDayView || key !== 'date');
@@ -480,8 +463,9 @@ function renderTTETableFooter(data) {
             `;
         } else if (config.type === 'number') {
             cellClasses += ' whitespace-nowrap text-center font-mono text-gray-500';
-            const constructedKey = getConstructedKey(key, leadType);
-            const values = data.map(row => row[constructedKey]);
+            // MODIFICATION START: Use the dynamic 'display_' properties for calculation
+            const values = data.map(row => row[`display_${key}`]);
+            // MODIFICATION END
             const stats = calculateColumnStats(values);
             const statValue = stats[state.tteSummaryStat];
             cellContent = (statValue === 0 && values.every(v => v !== 0)) ? 'N/A' : formatDuration(statValue);
