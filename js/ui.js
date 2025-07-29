@@ -46,11 +46,10 @@ export function populateFilters(element, data, key, placeholderText, filterFunct
     }
 }
 
-// CORRECTED CODE
-export function populateMultiSelectFilter(buttonEl, dropdownEl, data, key, placeholderText) {
+export function populateMultiSelectFilter(buttonEl, dropdownEl, data, key, placeholderText, selectAllByDefault = true, defaultValue = null) {
     if (!buttonEl || !dropdownEl) return;
 
-    const values = [...new Set(data.map(d => d[key]).filter(Boolean))].sort();
+    const values = [...new Set(data.map(d => d[key]).filter(Boolean))];
 
     const itemsHTML = values.map(v => `
         <label class="flex items-center p-2 hover:bg-gray-600 cursor-pointer">
@@ -60,20 +59,21 @@ export function populateMultiSelectFilter(buttonEl, dropdownEl, data, key, place
     `).join('');
 
     const actionsHTML = `
-        <div class="p-2 flex justify-between border-b border-gray-600 sticky top-0 bg-gray-700 z-10">
+        <div class="p-2 flex justify-between border-b border-gray-600 sticky top-0 bg-gray-700 z-10 multi-select-actions">
             <button class="text-xs font-semibold text-blue-400 hover:underline" data-action="select-all">Select All</button>
             <button class="text-xs font-semibold text-gray-400 hover:underline" data-action="deselect-all">Deselect All</button>
         </div>
     `;
 
     dropdownEl.innerHTML = actionsHTML + `<div class="multi-select-items-container">${itemsHTML}</div>`;
+    
+    const actionsContainer = dropdownEl.querySelector('.multi-select-actions');
 
-    // --- Event Handling ---
     if (dropdownEl._changeHandler) {
         dropdownEl.removeEventListener('change', dropdownEl._changeHandler);
     }
-    if (dropdownEl._clickHandler) {
-        dropdownEl.removeEventListener('click', dropdownEl._clickHandler);
+    if (actionsContainer && actionsContainer._clickHandler) {
+        actionsContainer.removeEventListener('click', actionsContainer._clickHandler);
     }
 
     const handleCheckboxChange = () => {
@@ -81,48 +81,52 @@ export function populateMultiSelectFilter(buttonEl, dropdownEl, data, key, place
     };
 
     const handleActionClick = (e) => {
-        const action = e.target.dataset.action;
-        if (!action) return;
+        const actionButton = e.target.closest('[data-action]');
+        if (!actionButton) return;
 
+        const action = actionButton.dataset.action;
         e.preventDefault();
         const checkboxes = dropdownEl.querySelectorAll('.multi-select-item');
         const shouldBeChecked = action === 'select-all';
 
         checkboxes.forEach(cb => {
-            cb.checked = shouldBeChecked;
+            if(cb.checked !== shouldBeChecked) {
+               cb.checked = shouldBeChecked;
+            }
         });
-
-        // Manually trigger a change event on the dropdown so the rankings view updates
+        
         dropdownEl.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
     dropdownEl.addEventListener('change', handleCheckboxChange);
-    dropdownEl.addEventListener('click', handleActionClick);
-
-    // Store references to the handlers for potential cleanup
-    dropdownEl._changeHandler = handleCheckboxChange;
-    dropdownEl._clickHandler = handleActionClick;
-
-    // Set the initial state of the checkboxes
-    if (key === 'team_name' || key === 'recruiter_name') {
-        // Default to all teams selected
-         dropdownEl.querySelectorAll('.multi-select-item').forEach(cb => cb.checked = true);
-    } else {
-        // Default to only the first company/contract selected
-        const firstCheckbox = dropdownEl.querySelector('.multi-select-item');
-        if (firstCheckbox) {
-            firstCheckbox.checked = true;
-        }
+    if (actionsContainer) {
+        actionsContainer.addEventListener('click', handleActionClick);
     }
 
+    dropdownEl._changeHandler = handleCheckboxChange;
+    if (actionsContainer) {
+        actionsContainer._clickHandler = handleActionClick;
+    }
+
+    dropdownEl.querySelectorAll('.multi-select-item').forEach(cb => {
+        if (defaultValue) {
+            cb.checked = cb.value === defaultValue;
+        } else {
+            cb.checked = selectAllByDefault;
+        }
+    });
     updateMultiSelectButtonText(buttonEl, dropdownEl, placeholderText);
 }
 
 
 export function updateMultiSelectButtonText(buttonEl, dropdownEl, placeholderText) {
     const selectedCount = dropdownEl.querySelectorAll('input:not([data-role="select-all"]):checked').length;
+    const totalCount = dropdownEl.querySelectorAll('input:not([data-role="select-all"])').length;
+
     if (selectedCount === 0) {
-        buttonEl.textContent = placeholderText;
+        buttonEl.textContent = `None selected`;
+    } else if (selectedCount === totalCount) {
+        buttonEl.textContent = placeholderText; // e.g., "All Teams"
     } else if (selectedCount === 1) {
         buttonEl.textContent = dropdownEl.querySelector('input:not([data-role="select-all"]):checked').value;
     } else {
@@ -131,7 +135,6 @@ export function updateMultiSelectButtonText(buttonEl, dropdownEl, placeholderTex
 }
 
 
-// CORRECTED CODE
 export function populateAllDropdowns(teamForRecruiters = null) {
     // --- Create Default Contract List ---
     const defaultContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
