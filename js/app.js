@@ -149,10 +149,10 @@ function initializeApp() {
         state.leadLifecycleData = data.leadLifecycleData || [];
         state.combinedDataForRankings = [...state.allData, ...state.drugTestsData, ...state.mvrPspCdlData, ...state.recruiterData, ...state.profilerData];
 
-        if (data.updatesData) {
+        if (data.updatesData && data.updatesData.version) {
             const latestVersion = data.updatesData.version;
             const lastSeenVersion = localStorage.getItem('lastSeenUpdateVersion');
-            if (latestVersion !== lastSeenVersion) {
+            if (String(latestVersion) !== lastSeenVersion) {
                 openUpdateModal(data.updatesData);
             }
         }
@@ -382,7 +382,9 @@ function openUpdateModal(update) {
     // Close button event listener for the new modal
     document.getElementById('closeUpdateModalBtn').addEventListener('click', () => {
         closeModal('updateModal');
-        localStorage.setItem('lastSeenUpdateVersion', update.version);
+        if (update.version) {
+            localStorage.setItem('lastSeenUpdateVersion', update.version);
+        }
     });
 }
 
