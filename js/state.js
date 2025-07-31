@@ -101,7 +101,7 @@ export const state = {
         ttePValue: 'p50',
         tteLeadType: 'total',
         leadsReachedLeadType: 'total',
-        drugTestType: 'All Types',
+        
         perLeadMetrics: {
             outbound_calls: false, unique_calls: false, call_duration_seconds: false,
             outbound_sms: false, unique_sms: false, profiles_profiled: false,
@@ -125,7 +125,7 @@ export const state = {
         ttePValue: 'p50',
         tteLeadType: 'total',
         leadsReachedLeadType: 'total',
-        drugTestType: 'All Types',
+        
         perLeadMetrics: {
             outbound_calls: false, unique_calls: false, call_duration_seconds: false,
             outbound_sms: false, unique_sms: false, profiles_profiled: false,
