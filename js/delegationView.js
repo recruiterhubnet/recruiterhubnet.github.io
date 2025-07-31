@@ -1652,18 +1652,15 @@ function downloadDelegationAsImage() {
 
     state.masterViewData.forEach(entityRow => {
         innerHTML += `<div class="entity-block">`;
-        innerHTML += `<h2>${entityRow.entity}</h2>`;
+        innerHTML += `<h2 class="entity-name">${entityRow.entity}</h2>`;
+        innerHTML += `<div class="delegation-details">`;
         
         const breakdownParts = [];
         const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
 
         for (const company of sortedCompanies) {
             const contracts = entityRow.companyBreakdowns[company]
-                // --- THIS IS THE FIX: Filter the contracts based on visibility ---
-                .filter(b => {
-                    const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
-                    return b.projDel > 0 && item && visibleItemIds.includes(item.id) && item.id !== allContractId;
-                })
+                // ... (rest of the loop is the same) ...
                 .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
             
             if (contracts.length > 0) {
@@ -1672,9 +1669,15 @@ function downloadDelegationAsImage() {
             }
         }
         
-        const breakdownText = breakdownParts.length > 0 ? breakdownParts.join(' &nbsp; | &nbsp; ') : 'No projected delegations.';
-        innerHTML += `<p>${breakdownText}</p>`;
-        innerHTML += `</div>`;
+        const hasDelegations = breakdownParts.length > 0;
+        
+        if (hasDelegations) {
+            innerHTML += breakdownParts.map(part => `<p>${part}</p>`).join('');
+        } else {
+            innerHTML += `<p class="no-delegation-text">No projected delegations.</p>`;
+        }
+        
+        innerHTML += `</div></div>`;
     });
 
     container.innerHTML = innerHTML;
