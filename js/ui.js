@@ -169,7 +169,7 @@ export function populateAllDropdowns(teamForRecruiters = null) {
     populateFilters(document.getElementById('arrivalsTeamFilter'), allArrivalsRelatedData, 'team_name', 'All Teams');
     populateFilters(document.getElementById('arrivalsCompanyFilter'), state.drugTestsData, 'company_name', 'All Companies');
     populateFilters(document.getElementById('arrivalsContractFilter'), allArrivalsRelatedData, 'contract_type', 'All Contracts');
-    populateFilters(document.getElementById('arrivalsDrugTestFilter'), state.drugTestsData, 'drug_test_type', 'All Test Types');
+    
     
     renderArrivalsView();
 
