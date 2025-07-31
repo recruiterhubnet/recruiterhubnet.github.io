@@ -116,8 +116,7 @@ function initializeRankingsSettingsModal() {
     const modal = document.getElementById('rankingsSettingsModal');
     if (!modal) return;
 
-    const drugTestFilterEl = document.getElementById('rankingsDrugTestFilter');
-    populateFilters(drugTestFilterEl, state.drugTestsData, 'drug_test_type', 'All Types');
+
 
     document.getElementById('closeRankingsSettingsBtn').addEventListener('click', () => modal.classList.add('hidden'));
     document.getElementById('saveRankingsSettingsBtn').addEventListener('click', saveRankingsSettings);
@@ -253,7 +252,7 @@ function loadSettingsToModal() {
     document.getElementById('tteSourceProfiler').value = tteSourceProfiler || 'standard';
     document.getElementById('leadsReachedSourceProfiler').value = leadsReachedSourceProfiler || 'standard';
 
-    document.getElementById('rankingsDrugTestFilter').value = drugTestType;
+   
 
     const perLeadContainer = document.getElementById('perLeadMetricsContainer');
     const perLeadMetrics = settings.perLeadMetrics || {};
@@ -293,7 +292,7 @@ function saveRankingsSettings() {
     settingsToUpdate.tteLeadType = document.getElementById('tteLeadType').value;
     settingsToUpdate.ttePValue = document.getElementById('ttePercentileSelect').value;
     settingsToUpdate.leadsReachedLeadType = document.getElementById('leadsReachedLeadType').value;
-    settingsToUpdate.drugTestType = document.getElementById('rankingsDrugTestFilter').value;
+    
     
     if (isProfilerMode) {
         settingsToUpdate.tteSourceProfiler = document.getElementById('tteSourceProfiler').value;
@@ -788,7 +787,7 @@ function addRankingsEventListeners() {
 
     const filters = ['rankingsDateFromFilter', 'rankingsDateToFilter'];
     filters.forEach(id => document.getElementById(id).addEventListener('change', renderRankings));
-
+    
     const tableHeader = document.getElementById('rankingsTableHeader');
 tableHeader.addEventListener('mouseover', (e) => {
     const tooltipContainer = e.target.closest('.th-tooltip-container');
@@ -868,6 +867,7 @@ tableHeader.addEventListener('mouseout', () => {
             sortRankingsData(header.dataset.sortKey);
         }
     });
+    initializeRankingsImageModal();
 }
 
 function getTotalDaysInSelectedPeriod() {
@@ -2949,3 +2949,336 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+// Add this function at the end of the file
+function initializeRankingsImageModal() {
+    const modal = document.getElementById('rankingsImageModal');
+    if (!modal) return;
+
+    const settingsContainer = document.getElementById('rankingsImageSettings');
+
+    document.getElementById('openRankingsImageModalBtn')?.addEventListener('click', openRankingsImageModal);
+    document.getElementById('closeRankingsImageModalBtn')?.addEventListener('click', () => modal.classList.add('hidden'));
+    document.getElementById('generateRankingsImageBtn')?.addEventListener('click', generateRankingsImage);
+    
+    // MODIFIED: Added a more specific event listener
+    if (settingsContainer) {
+        settingsContainer.addEventListener('change', (e) => {
+            if (e.target.matches('.image-col-checkbox, #rankingsImageRowCount')) {
+                // Save checkbox state when it changes
+                const uncheckedKeys = Array.from(settingsContainer.querySelectorAll('.image-col-checkbox:not(:checked)'))
+                    .map(cb => cb.dataset.key);
+                localStorage.setItem('rankingsImageUncheckedColumns', JSON.stringify(uncheckedKeys));
+
+                renderRankingsImagePreview();
+            }
+        });
+    }
+}
+
+// Add this function at the end of the file
+function openRankingsImageModal() {
+    const settingsContainer = document.getElementById('rankingsImageSettings');
+    if (!settingsContainer) return;
+
+    const headerConfig = getRankingsHeaderConfig();
+    const allColumnsInOrder = getRankingsColumnsInOrder();
+
+    const columnLabels = {};
+    headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
+    Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
+    allColumnsInOrder.forEach(key => {
+        if (key.includes('_percentile')) {
+            const baseKey = key.replace('_percentile', '');
+            columnLabels[key] = `${headerConfig.columnDetails[baseKey]?.label} %`;
+        }
+    });
+
+    const groups = {
+        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score'],
+        "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
+        "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
+        "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'median_call_duration', 'median_call_duration_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
+        "Arrivals Metrics": ['total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile']
+    };
+
+    // --- NEW: HTML for the row count selector ---
+    const displayOptionsHtml = `
+        <div>
+            <h4>Display Options</h4>
+            <div class="space-y-1 mt-2">
+                <label class="flex items-center justify-between p-1">
+                    <span class="text-sm text-gray-300">Number of Rows</span>
+                    <select id="rankingsImageRowCount" class="modal-select w-24 !py-1">
+                        <option value="5">Top 5</option>
+                        <option value="10" selected>Top 10</option>
+                        <option value="20">Top 20</option>
+                        <option value="all">All</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+    `;
+
+    let settingsHtml = displayOptionsHtml;
+    for (const groupName in groups) {
+        const availableKeys = groups[groupName].filter(key => allColumnsInOrder.includes(key));
+        if (availableKeys.length > 0) {
+            settingsHtml += `<div><h4>${groupName}</h4><div class="space-y-1 mt-2">`;
+            availableKeys.forEach(key => {
+                settingsHtml += `
+                    <label class="flex items-center space-x-3 p-1 rounded-md hover:bg-gray-700/50 cursor-pointer">
+                        <input type="checkbox" data-key="${key}" class="image-col-checkbox h-4 w-4 rounded" checked>
+                        <span class="text-sm text-gray-300">${columnLabels[key] || key}</span>
+                    </label>
+                `;
+            });
+            settingsHtml += `</div></div>`;
+        }
+    }
+
+    settingsContainer.innerHTML = settingsHtml;
+
+    // --- MODIFICATION START: Load and apply saved settings ---
+    const savedUnchecked = JSON.parse(localStorage.getItem('rankingsImageUncheckedColumns'));
+    if (savedUnchecked && Array.isArray(savedUnchecked)) {
+        settingsContainer.querySelectorAll('.image-col-checkbox').forEach(cb => {
+            if (savedUnchecked.includes(cb.dataset.key)) {
+                cb.checked = false;
+            }
+        });
+    }
+    // --- MODIFICATION END ---
+    
+    renderRankingsImagePreview();
+    document.getElementById('rankingsImageModal').classList.remove('hidden');
+}
+
+// Add this function at the end of the file
+function renderRankingsImagePreview() {
+    const previewContainer = document.getElementById('rankingsImagePreviewContainer');
+    if (!previewContainer) return;
+
+    const selectedKeys = Array.from(document.querySelectorAll('.image-col-checkbox:checked')).map(cb => cb.dataset.key);
+    
+    const rowCountEl = document.getElementById('rankingsImageRowCount');
+    const rowCountValue = rowCountEl ? rowCountEl.value : '10';
+    const data = rowCountValue === 'all' 
+        ? state.rankedData 
+        : state.rankedData.slice(0, parseInt(rowCountValue, 10));
+
+    if (data.length === 0) {
+        previewContainer.innerHTML = `<p class="preview-subtitle">No data available for the current filters.</p>`;
+        return;
+    }
+
+    const headerConfig = getRankingsHeaderConfig();
+    const getLabel = (key) => {
+        if (key.includes('_percentile')) {
+            const baseKey = key.replace('_percentile', '');
+            return `% ${headerConfig.columnDetails[baseKey]?.label}`;
+        }
+        return headerConfig.columnDetails[key]?.label || headerConfig.base.find(c => c.key === key)?.label || key;
+    };
+
+    // --- Header Generation ---
+    const headerHtml = `<thead><tr>${selectedKeys.map(key => `<th>${getLabel(key)}</th>`).join('')}</tr></thead>`;
+
+    // --- Body Generation (Updated with trophy logic) ---
+    const bodyHtml = `<tbody>${data.map(row => {
+        const cells = selectedKeys.map(key => {
+            let value = row[key];
+            let cellClass = '';
+            
+            // Add trophy icons for ranks 1, 2, 3
+            if (key === 'rank') {
+                let trophyHtml = '';
+                // --- THIS IS THE FIX: Added the 'fas' class ---
+                if (row.rank === 1) trophyHtml = '<i class="fas fa-trophy trophy-icon trophy-gold"></i>';
+                if (row.rank === 2) trophyHtml = '<i class="fas fa-trophy trophy-icon trophy-silver"></i>';
+                if (row.rank === 3) trophyHtml = '<i class="fas fa-trophy trophy-icon trophy-bronze"></i>';
+                value = `<span>${value}${trophyHtml}</span>`;
+            }
+            
+            if (['name', 'team'].includes(key)) cellClass = 'text-cell';
+            if (key === 'rank') cellClass = 'rank-cell';
+            if (key.includes('_score')) cellClass = `${key.replace(/_/g, '-')}-cell score-cell`;
+            if (key.includes('percentile')) cellClass = 'percentile-cell';
+
+            if (typeof row[key] === 'number') {
+                if (key.includes('percentile') || key.includes('_score') || ['leads_reached', 'past_due_ratio'].includes(key)) {
+                    value = `${row[key].toFixed(1)}%`;
+                } else if (['tte_value', 'median_time_to_profile', 'median_call_duration', 'call_duration_seconds'].includes(key)) {
+                    value = formatDuration(row[key]);
+                } else {
+                    value = Math.round(row[key]);
+                }
+            }
+            return `<td class="${cellClass}">${value ?? 'N/A'}</td>`;
+        }).join('');
+        return `<tr>${cells}</tr>`;
+    }).join('')}</tbody>`;
+
+    const dateFrom = document.getElementById('rankingsDateFromFilter').value;
+    const dateTo = document.getElementById('rankingsDateToFilter').value;
+    const modeText = state.rankingsMode.charAt(0).toUpperCase() + state.rankingsMode.slice(1);
+    const titleText = rowCountValue === 'all' ? `Full ${modeText} Rankings` : `Top ${rowCountValue} ${modeText} Rankings`;
+
+    previewContainer.innerHTML = `
+        <div class="preview-header">
+            <h1>${titleText}</h1>
+            <p>${dateFrom} to ${dateTo}</p>
+        </div>
+        <table>${headerHtml}${bodyHtml}</table>
+    `;
+}
+
+// Add this function at the end of the file
+function generateRankingsImage() {
+    const previewElement = document.getElementById('rankingsImagePreviewContainer');
+    if (!previewElement) {
+        alert('Preview element not found!');
+        return;
+    }
+
+    // Options to make html2canvas capture the full scroll width
+    const options = {
+        backgroundColor: '#111827',
+        scale: 2, // Increase resolution for better quality
+        width: previewElement.scrollWidth,
+        windowWidth: previewElement.scrollWidth
+    };
+
+    html2canvas(previewElement, options).then(canvas => {
+        const link = document.createElement('a');
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `Rankings_Top10_${date}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }).catch(err => {
+        console.error("Error generating image:", err);
+        alert("Could not generate image. See console for details.");
+    });
+}
+
+
+// --- HELPER FUNCTIONS to avoid code duplication ---
+// Add these new helper functions somewhere in rankingsView.js
+
+function getRankingsHeaderConfig() {
+    const mode = state.rankingsMode;
+    const isProfiler = mode === 'profiler';
+    const settings = isProfiler ? state.rankingSettingsProfiler : state.rankingSettings;
+    const perLead = settings.perLeadMetrics;
+
+    const baseConfig = {
+        // ... (this is the same large headerConfig object from renderRankingsHeaders)
+        base: [
+            { key: 'rank', label: 'RANK', type: 'number' },
+            { key: 'name', label: mode === 'team' ? 'TEAM' : 'RECRUITER', type: 'string' },
+            { key: 'team', label: 'TEAM', type: 'string', hidden: mode !== 'recruiter' },
+            { key: 'num_recruiters', label: '# RECS', type: 'number', hidden: mode !== 'team' },
+            { key: 'new_leads_assigned_on_date', label: 'NEW', type: 'number' },
+            { key: 'old_leads_assigned_on_date', label: 'OLD', type: 'number' },
+            { key: mode === 'profiler' ? 'fresh_leads_assigned_on_date' : 'hot_leads_assigned', label: mode === 'profiler' ? 'FRESH' : 'HOT', type: 'number' },
+        ],
+        mainGroups: [
+             {
+                label: 'EFFORT',
+                cssClass: 'th-effort-group',
+                scoreKey: 'effort_score',
+                subGroups: [
+                    { label: 'CALLS', scoreKey: 'calls_score', columns: ['outbound_calls', 'unique_calls', 'call_duration_seconds'] },
+                    { label: 'SMS', scoreKey: 'sms_score', columns: ['outbound_sms', 'unique_sms'] },
+                    { label: 'NOTES', columns: ['profiler_note_lenght_all'], hidden: mode !== 'profiler' },
+                    { label: 'ACTIVE DAYS', columns: ['active_days'] },
+                    { label: 'TIME TO PROFILE', columns: ['median_time_to_profile'], hidden: mode !== 'profiler' }
+                ]
+            },
+            {
+                label: 'COMPLIANCE',
+                cssClass: 'th-compliance-group',
+                scoreKey: 'compliance_score',
+                subGroups: [
+                    { label: 'TIME TO ENGAGE', columns: ['tte_value'] },
+                    { label: 'LEADS REACHED', columns: ['leads_reached'] },
+                    { label: 'MEDIAN CALL DURATION', columns: ['median_call_duration'] },
+                    { label: 'PROFILE COMPLETION', columns: ['profiles_completed'], hidden: mode === 'profiler' },
+                    { label: 'PROFILE COMPLETION', scoreKey: 'profiles_score', columns: ['profiles_profiled', 'profiles_completed'], hidden: mode !== 'profiler' },
+                    { label: 'DOCUMENTS', scoreKey: 'documents_score', columns: ['mvr', 'psp', 'cdl'] },
+                    { label: 'PAST DUE', columns: ['past_due_ratio'], hidden: mode === 'profiler' }
+                ]
+            },
+            {
+                label: 'ARRIVALS',
+                cssClass: 'th-arrivals-group',
+                scoreKey: 'arrivals_score',
+                subGroups: [
+                    { label: 'DRUG TESTS', columns: ['total_drug_tests'] },
+                    { label: 'ONBOARDED', columns: ['onboarded'] },
+                ]
+            }
+        ],
+        columnDetails: {
+            // ... (full columnDetails object from renderRankingsHeaders)
+            rank: { label: 'RANK' }, name: { label: 'NAME' }, team: { label: 'TEAM' }, num_recruiters: { label: '# RECS'},
+            new_leads_assigned_on_date: { label: 'NEW' }, old_leads_assigned_on_date: { label: 'OLD'},
+            hot_leads_assigned: { label: 'HOT' }, fresh_leads_assigned_on_date: { label: 'FRESH'},
+            final_score: { label: 'Final Score' }, effort_score: { label: 'Effort Score' }, compliance_score: { label: 'Compliance Score' },
+            arrivals_score: { label: 'Arrivals Score' }, calls_score: { label: 'Calls Score' }, sms_score: { label: 'SMS Score' },
+            outbound_calls: { label: 'Total' }, unique_calls: { label: 'Unq' }, call_duration_seconds: { label: 'Duration' },
+            outbound_sms: { label: 'Total' }, unique_sms: { label: 'Unq' }, active_days: { label: 'Days' },
+            leads_reached: { label: 'Reached' }, tte_value: { label: 'TTE' }, median_call_duration: { label: 'Duration' },
+            past_due_ratio: { label: 'Past Due %' }, total_drug_tests: { label: 'DT' }, onboarded: { label: 'Onboarded' },
+            profiles_score: { label: 'Profiles Score' }, profiles_profiled: { label: 'Profiled' },
+            profiles_completed: { label: 'Completed' }, documents_score: { label: 'Docs Score' }, mvr: { label: 'MVR' },
+            psp: { label: 'PSP' }, cdl: { label: 'CDL' }, profiler_note_lenght_all: { label: 'Note Length' },
+            median_time_to_profile: { label: 'Time' },
+        }
+    };
+    
+    // Apply dynamic labels based on settings
+    const dynamicLabels = {
+        outbound_calls: { label: perLead.outbound_calls ? 'Calls/Ld' : 'Total' },
+        unique_calls: { label: perLead.unique_calls ? 'Unq/Ld' : 'Unq' },
+        call_duration_seconds: { label: perLead.call_duration_seconds ? 'Dur/Ld' : 'Duration' },
+        outbound_sms: { label: perLead.outbound_sms ? 'SMS/Ld' : 'Total' },
+        unique_sms: { label: perLead.unique_sms ? 'Unq/Ld' : 'Unq' },
+        total_drug_tests: { label: perLead.total_drug_tests ? 'DT/Ld' : 'DT' },
+        onboarded: { label: perLead.onboarded ? 'Onb/Ld' : 'Onboarded' },
+        profiles_profiled: { label: perLead.profiles_profiled ? 'Prof/Ld' : 'Profiled' },
+        profiles_completed: { label: perLead.profiles_completed ? 'Comp/Ld' : 'Completed' },
+    };
+
+    for (const key in dynamicLabels) {
+        if (baseConfig.columnDetails[key]) {
+            baseConfig.columnDetails[key].label = dynamicLabels[key].label;
+        }
+    }
+    return baseConfig;
+}
+
+function getRankingsColumnsInOrder() {
+    const mode = state.rankingsMode;
+    return [
+        'rank', 'name',
+        ...(mode === 'recruiter' ? ['team'] : []),
+        ...(mode === 'team' ? ['num_recruiters'] : []),
+        'new_leads_assigned_on_date',
+        'old_leads_assigned_on_date',
+        mode === 'profiler' ? 'fresh_leads_assigned_on_date' : 'hot_leads_assigned',
+        'final_score', 'effort_score', 'calls_score',
+        'outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile',
+        'call_duration_seconds', 'call_duration_seconds_percentile', 'sms_score', 'outbound_sms',
+        'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile',
+        ...(mode === 'profiler' ? ['profiler_note_lenght_all', 'profiler_note_lenght_percentile'] : []),
+        'active_days', 'active_days_percentile',
+        ...(mode === 'profiler' ? ['median_time_to_profile', 'median_time_to_profile_percentile'] : []),
+        'compliance_score', 'tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile',
+        'median_call_duration', 'median_call_duration_percentile',
+        ...(mode !== 'profiler' ? ['profiles_completed', 'profiles_completed_percentile'] : []),
+        ...(mode === 'profiler' ? ['profiles_score', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile'] : []),
+        'documents_score', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile',
+        ...(mode !== 'profiler' ? ['past_due_ratio', 'past_due_ratio_percentile'] : []),
+        'arrivals_score', 'total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile',
+    ];
+}
