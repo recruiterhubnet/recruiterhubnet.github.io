@@ -293,6 +293,40 @@ function sortDelegationData(data) {
     return data;
 }
 
+function getContractsActiveInMatrix(companyName, entityType) {
+    const entities = entityType === 'team' ? state.activation.teams : state.activation.profilers;
+    const allContracts = state.settings.contracts;
+    const allGroups = state.settings.groups;
+    const companyMatrix = state.activation.matrix[companyName] || {};
+
+    const activeItems = [];
+    
+    // Check all contracts
+    allContracts.forEach(contract => {
+        if (contract.name.toUpperCase() === 'ALL') return; // Skip the 'ALL' contract
+        const hasActiveEntity = entities.some(entity => {
+            const matrixKey = `${entity.id}_${contract.id}`;
+            return companyMatrix[matrixKey] === true;
+        });
+        if (hasActiveEntity) {
+            activeItems.push(contract);
+        }
+    });
+
+    // Check all groups
+    allGroups.forEach(group => {
+        const hasActiveEntity = entities.some(entity => {
+            const matrixKey = `${entity.id}_${group.id}`;
+            return companyMatrix[matrixKey] === true;
+        });
+        if (hasActiveEntity) {
+            activeItems.push(group);
+        }
+    });
+
+    return activeItems;
+}
+
 function handleSortClick(e) {
     const header = e.target.closest('th[data-sort-key]');
     if (!header) return;
@@ -850,10 +884,8 @@ function renderCompanyView() {
     }
     
     const allEntitiesList = state.currentEntity === 'team' ? state.activation.teams : state.activation.profilers;
-    const visibleItems = [
-        ...state.settings.contracts.filter(c => state.settings.visibility[c.id]),
-        ...state.settings.groups.filter(g => state.settings.visibility[g.id])
-    ];
+    const visibleItems = getContractsActiveInMatrix(currentCompanyView, state.currentEntity);
+
     const entityTargets = state.settings.targets[state.currentEntity] || {};
     const companyTargets = entityTargets[currentCompanyView] || {};
     const companyMatrix = state.activation.matrix[currentCompanyView] || {};
