@@ -5,7 +5,7 @@ export const workingHoursAppScriptUrl = 'https://script.google.com/macros/s/AKfy
 //This is the new URL for arrivals data
 export const arrivalsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbw147EXh-INU9M8-bPx19zYFGtfqGH7obQt1umbtlvh_4Obu0LWTs-wRZVM1Vq57_Zh/exec'; 
 //This is the old URL, now specifically for drug tests
-export const drugTestsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbzFLFUSZDLkqV1aqrpM95T8Nz_zL7-aAAlYoG4_m2k0NbvxuVajyzyh86RzHh6JqkPm/exec';
+export const drugTestsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbz5pq5zA_iKlK98DmEyEGWRv0H9czJOZYku_T2qWA-O5NroRAHJh1_-1W8PCpGOp9SY/exec';
 export const mvrPspCdlAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxFOXsdgXgskgDhqmPtCpGuaWpl7Gb08QzJvp9EOXxGS0SzHZKsIn8CxJH91qomC_-FBQ/exec'; 
 //This is the Lead Count Assignment chart link
 export const leadLifecycleAppScriptUrl = 'https://script.google.com/macros/s/AKfycbx5dp8RX2ezRT3jM64Av5nvGtHD6eRIt8wlkCURXaRycBY-neRtLnWiM8ZVb4XaRWT9aw/exec';
