@@ -1165,6 +1165,22 @@
         </div>
     </div>
 
+    <div id="updateModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-bullhorn text-blue-400 text-xl"></i>
+                    <h3 id="updateModalTitle" class="text-xl font-semibold text-white">What's New!</h3>
+                </div>
+                <button id="closeUpdateModalBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
+            </header>
+            <main class="flex-grow p-6 overflow-y-auto">
+                <div id="updateModalContent" class="space-y-4 text-gray-300">
+                    </div>
+            </main>
+        </div>
+    </div>
+    
     <script src="js/app.js" type="module"></script>
 </body>
 </html>
