@@ -1944,60 +1944,75 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 /* --- END: Delegation Action Tooltip --- */
-/* --- START: Styles for Delegation Summary Image --- */
+/* --- START: REDESIGNED Styles for Delegation Summary Image --- */
 .delegation-summary-image-container {
     position: absolute;
-    left: -9999px; /* Position off-screen */
+    left: -9999px;
     top: 0;
     padding: 40px;
-    background-color: #111827; /* gray-900 */
-    color: #d1d5db; /* gray-300 */
+    background-color: #111827;
+    color: #d1d5db;
     font-family: 'Inter', sans-serif;
-    width: 800px; /* Fixed width for consistent image size */
+    width: 900px; /* A bit wider for the new layout */
     border: 1px solid #374151;
 }
 
 .delegation-summary-image-container h1 {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     color: #ffffff;
     text-align: center;
-    margin-bottom: 10px;
-    border-bottom: 2px solid #374151;
-    padding-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .delegation-summary-image-container .summary-subtitle {
     font-size: 14px;
     text-align: center;
-    color: #9ca3af; /* gray-400 */
-    margin-bottom: 30px;
+    color: #9ca3af;
+    margin-bottom: 40px;
 }
 
 .delegation-summary-image-container .entity-block {
-    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 220px 1fr; /* Name column | Details column */
+    gap: 24px; /* Space between columns */
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px solid #374151; /* Separator line */
 }
 
-.delegation-summary-image-container h2 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #60a5fa; /* blue-400 */
-    margin-bottom: 8px;
-    border-bottom: 1px solid #374151;
-    padding-bottom: 4px;
+.delegation-summary-image-container .entity-block:last-of-type {
+    border-bottom: none;
 }
 
-.delegation-summary-image-container p {
+.delegation-summary-image-container .entity-name {
     font-size: 16px;
+    font-weight: 600;
+    color: #60a5fa;
+    text-align: right; /* Aligns names to the right for a clean edge */
+}
+
+.delegation-summary-image-container .delegation-details p {
+    font-size: 15px;
     line-height: 1.6;
-    white-space: pre-wrap; /* Preserve line breaks and spacing */
+    margin: 0 0 8px 0; /* Adds a small space below each line */
+}
+
+.delegation-summary-image-container .delegation-details p:last-child {
+    margin-bottom: 0; /* Removes space from the very last line */
+}
+
+.delegation-summary-image-container .no-delegation-text {
+    color: #6b7280; /* Dimmer color for less emphasis */
+    font-style: italic;
 }
 
 /* Company-specific colors for the image text */
 .delegation-summary-image-container .company-amongus { color: #22d3ee; }
 .delegation-summary-image-container .company-eb-infinity { color: #60a5fa; }
 .delegation-summary-image-container .company-smj { color: #f59e0b; }
-/* --- END: Styles for Delegation Summary Image --- */
+/* --- END: REDESIGNED Styles for Delegation Summary Image --- */
+
 /* --- START: RANKINGS IMAGE MODAL STYLES (FINAL MODERN TABLE) --- */
 #rankingsImageSettings h4 {
     font-size: 0.875rem;
