@@ -2,12 +2,23 @@
 
 import { state } from './state.js';
 
+let isInitialized = false; // Add this line
+let activeTooltip = null; // Add this line
+
 // --- CONFIGURATION ---
 const columnsConfig = {
     recruiter_name: { label: 'Recruiter', type: 'string' },
     team_name: { label: 'Team', type: 'string' },
-    total_arrivals: { label: 'Total Arrivals', type: 'number' },
-    total_drug_tests: { label: 'Total Drug Tests', type: 'number' },
+    total_arrivals: { 
+        label: 'Total Arrivals', 
+        type: 'number', 
+        tooltip: "Data is taken into account from TMS > PROFILES > DRIVERS > CONTRACT, where RECRUITED DATE is considered. Includes records where END DATE - START DATE is more than 7 days, or where an end date doesn't exist." 
+    },
+    total_drug_tests: { 
+        label: 'Total Drug Tests', 
+        type: 'number',
+        tooltip: "Data is gathered from leads' DT SCHEDULE DATE."
+    },
 };
 
 const filterElements = {
@@ -15,7 +26,7 @@ const filterElements = {
     team: document.getElementById('arrivalsTeamFilter'),
     company: document.getElementById('arrivalsCompanyFilter'),
     contract: document.getElementById('arrivalsContractFilter'),
-    drugTestType: document.getElementById('arrivalsDrugTestFilter'),
+   
     dateFrom: document.getElementById('arrivalsDateFromFilter'),
     dateTo: document.getElementById('arrivalsDateToFilter'),
 };
@@ -32,7 +43,64 @@ function addEventListeners() {
         if(el) el.addEventListener('change', renderAll);
     });
 
-    document.getElementById('arrivalsTableHeader').addEventListener('click', handleSort);
+    const arrivalsView = document.getElementById('arrivalsView');
+    if (!arrivalsView) return;
+
+    arrivalsView.addEventListener('click', (e) => {
+        const header = e.target.closest('.sortable');
+        if (header) {
+            handleSort(e);
+        }
+    });
+
+    // --- START: ADDED TOOLTIP EVENT LISTENERS ---
+    arrivalsView.addEventListener('mouseover', (e) => {
+        const icon = e.target.closest('.help-tooltip-icon');
+        if (!icon) return;
+
+        if (activeTooltip) activeTooltip.remove();
+
+        const tooltipContainer = icon.closest('.help-tooltip-container');
+        const tooltipTextEl = tooltipContainer.querySelector('.help-tooltip-text');
+        
+        if (!tooltipTextEl || !tooltipTextEl.innerHTML) return;
+
+        activeTooltip = document.createElement('div');
+        activeTooltip.className = 'help-tooltip-text'; // Use the class for styling
+        activeTooltip.style.cssText = `
+            visibility: visible;
+            opacity: 1;
+            position: fixed; /* Use fixed positioning */
+            z-index: 110;
+        `;
+        activeTooltip.innerHTML = tooltipTextEl.innerHTML;
+        // Make sure the width is set from the original tooltip if it exists
+        activeTooltip.style.width = tooltipTextEl.style.width || '300px'; 
+        
+        document.body.appendChild(activeTooltip);
+
+        const iconRect = icon.getBoundingClientRect();
+        const tooltipRect = activeTooltip.getBoundingClientRect();
+        
+        let top = iconRect.bottom + 8;
+        let left = iconRect.left + (iconRect.width / 2) - (tooltipRect.width / 2);
+
+        if (left < 8) left = 8;
+        if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 8;
+        if (top + tooltipRect.height > window.innerHeight) top = iconRect.top - tooltipRect.height - 8;
+
+        activeTooltip.style.left = `${left}px`;
+        activeTooltip.style.top = `${top}px`;
+    });
+
+    arrivalsView.addEventListener('mouseout', (e) => {
+        const icon = e.target.closest('.help-tooltip-icon');
+        if (icon && activeTooltip) {
+            activeTooltip.remove();
+            activeTooltip = null;
+        }
+    });
+    // --- END: ADDED TOOLTIP EVENT LISTENERS ---
 }
 
 
@@ -56,7 +124,7 @@ function getFilters() {
         team: filterElements.team.value,
         company: filterElements.company.value,
         contract: filterElements.contract.value,
-        drugTestType: filterElements.drugTestType.value,
+        
         dateFrom: filterElements.dateFrom.value ? new Date(filterElements.dateFrom.value) : null,
         dateTo: filterElements.dateTo.value ? new Date(new Date(filterElements.dateTo.value).getTime() + (24 * 60 * 60 * 1000 -1)) : null,
     };
@@ -79,17 +147,21 @@ function getFilteredData() {
         // Company filter is intentionally omitted for arrivals as it's not present in that dataset
     );
 
-    // Filter drug test data
-    const drugTests = state.drugTestsData.filter(row =>
+    // Base filter for all drug tests based on UI controls
+    const baseDrugTestFilter = row =>
         dateFilter(row) &&
         (!filters.recruiter || row.recruiter_name === filters.recruiter) &&
         (!filters.team || row.team_name === filters.team) &&
         (!filters.company || row.company_name === filters.company) &&
-        (!filters.contract || row.contract_type === filters.contract) &&
-        (!filters.drugTestType || row.drug_test_type === filters.drugTestType)
-    );
+        (!filters.contract || row.contract_type === filters.contract);
 
-    return { arrivals, drugTests };
+    // Data for the table (includes PROFILERS)
+    const drugTestsForTable = state.drugTestsData.filter(baseDrugTestFilter);
+
+    // Data for KPIs and Chart (excludes PROFILERS)
+    const drugTestsForDisplay = drugTestsForTable.filter(row => row.team_name !== 'Profilers');
+
+    return { arrivals, drugTestsForTable, drugTestsForDisplay };
 }
 
 
@@ -143,15 +215,15 @@ function sortData(data) {
 export function renderAll() {
     if (!state.arrivalsData && !state.drugTestsData) return;
 
-    const { arrivals, drugTests } = getFilteredData();
-    const aggregatedData = aggregateDataForTable({ arrivals, drugTests });
+    const { arrivals, drugTestsForTable, drugTestsForDisplay } = getFilteredData();
+    const aggregatedData = aggregateDataForTable({ arrivals, drugTests: drugTestsForTable }); // Use table data
     const sortedData = sortData(aggregatedData);
 
-    renderKPIs({ arrivals, drugTests });
+    renderKPIs({ arrivals, drugTests: drugTestsForDisplay }); // Use display data for KPI
     renderTableHeader();
     renderTableBody(sortedData);
     renderTableFooter(sortedData);
-    renderChart({ arrivals, drugTests });
+    renderChart({ arrivals, drugTests: drugTestsForDisplay }); // Use display data for Chart
 }
 
 function renderKPIs({ arrivals, drugTests }) {
@@ -166,10 +238,13 @@ function renderTableHeader() {
         const isSorted = sortKey === key;
         const sortClasses = isSorted ? `sorted-${sortDir}` : '';
         const alignClass = conf.type === 'number' || key === 'team_name' ? 'text-center' : 'text-left';
+        
+        const tooltipHtml = conf.tooltip ? `<div class="help-tooltip-container ml-1"><i class="fas fa-question-circle help-tooltip-icon text-xs"></i><div class="help-tooltip-text" style="display: none; width: 300px;">${conf.tooltip}</div></div>` : '';
 
         return `<th class="table-header-cell p-2 ${alignClass} text-xs font-semibold text-gray-400 uppercase tracking-wider sortable ${sortClasses} cursor-pointer" data-sort-key="${key}">
             <div class="flex items-center ${alignClass === 'text-center' ? 'justify-center' : ''}">
                 <span>${conf.label}</span>
+                ${tooltipHtml}
                 <span class="sort-icon sort-icon-up ml-2"><i class="fas fa-arrow-up"></i></span>
                 <span class="sort-icon sort-icon-down ml-2"><i class="fas fa-arrow-down"></i></span>
             </div>
