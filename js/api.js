@@ -1,6 +1,6 @@
 // js/api.js
 
-import { leadRiskAppScriptUrl, workingHoursAppScriptUrl, arrivalsAppScriptUrl, drugTestsAppScriptUrl, mvrPspCdlAppScriptUrl, leadLifecycleAppScriptUrl } from './config.js';
+import { leadRiskAppScriptUrl, workingHoursAppScriptUrl, arrivalsAppScriptUrl, drugTestsAppScriptUrl, mvrPspCdlAppScriptUrl, leadLifecycleAppScriptUrl, updatesAppScriptUrl } from './config.js';
 
 
 async function fetchData(url) {
@@ -28,14 +28,16 @@ export async function fetchAllData() {
     const drugTestsPromise = fetchData(drugTestsAppScriptUrl);
     const mvrPspCdlPromise = fetchData(mvrPspCdlAppScriptUrl);
     const leadLifecyclePromise = fetchData(leadLifecycleAppScriptUrl);
+    const updatesPromise = fetchData(updatesAppScriptUrl);
 
-    const [leadRiskData, whData, arrivalsResponse, drugTestsResponse, fullCaptureResponse, leadLifecycleResponse] = await Promise.all([
+    const [leadRiskData, whData, arrivalsResponse, drugTestsResponse, fullCaptureResponse, leadLifecycleResponse, updatesData] = await Promise.all([
         leadRiskPromise,
         workingHoursPromise,
         arrivalsPromise,
         drugTestsPromise,
         mvrPspCdlPromise,
-        leadLifecyclePromise
+        leadLifecyclePromise,
+        updatesPromise
     ]);
 
     const mvrPspCdlData = fullCaptureResponse ? fullCaptureResponse.mvr_psp_cdl : [];
@@ -68,5 +70,6 @@ export async function fetchAllData() {
         recruiterData: recruiterData || [],
         profilerData: profilerData || [],
         leadLifecycleData: leadLifecycleData || [],
+        updatesData: updatesData || null, 
     };
 }
