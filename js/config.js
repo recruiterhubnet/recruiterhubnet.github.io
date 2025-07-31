@@ -9,7 +9,8 @@ export const drugTestsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbz
 export const mvrPspCdlAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxFOXsdgXgskgDhqmPtCpGuaWpl7Gb08QzJvp9EOXxGS0SzHZKsIn8CxJH91qomC_-FBQ/exec'; 
 //This is the Lead Count Assignment chart link
 export const leadLifecycleAppScriptUrl = 'https://script.google.com/macros/s/AKfycbx5dp8RX2ezRT3jM64Av5nvGtHD6eRIt8wlkCURXaRycBY-neRtLnWiM8ZVb4XaRWT9aw/exec';
-
+//This is the popup link
+export const updatesAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxa3nlW8L4ORpURFYmkCUrpmHi_8Yu9izL8wTKJZM9DMDT1P19rJHCsfiaGiqUjfFanEQ/exec'; 
 
 export const columnsConfig = {
     date: { label: 'Date', visible: true, type: 'date' },
