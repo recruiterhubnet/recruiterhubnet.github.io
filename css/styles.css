@@ -160,14 +160,26 @@ body {
     color: #e2e8f0; /* slate-200 */
 }
 
-.effort-score-header, .effort-score-cell {
-    background-color: rgba(249, 115, 22, 0.15); /* Lighter Orange */
+/* Keep background color for headers */
+.effort-score-header {
+    background-color: rgba(249, 115, 22, 0.15); 
 }
-.compliance-score-header, .compliance-score-cell {
-    background-color: rgba(16, 185, 129, 0.15); /* Lighter Green */
+.compliance-score-header {
+    background-color: rgba(16, 185, 129, 0.15);
 }
-.arrivals-score-header, .arrivals-score-cell {
-    background-color: rgba(239, 68, 68, 0.15); /* Lighter Red */
+.arrivals-score-header {
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* Apply color only to the text for data cells */
+.effort-score-cell {
+    color: #f97316; /* Orange Text */
+}
+.compliance-score-cell {
+    color: #10b981; /* Green Text */
+}
+.arrivals-score-cell {
+    color: #f87171; /* Light Red Text */
 }
 
 .effort-score-header { background-color: rgba(249, 115, 22, 0.15); color: #ffedd5; }
@@ -1986,3 +1998,128 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 .delegation-summary-image-container .company-eb-infinity { color: #60a5fa; }
 .delegation-summary-image-container .company-smj { color: #f59e0b; }
 /* --- END: Styles for Delegation Summary Image --- */
+/* --- START: RANKINGS IMAGE MODAL STYLES (FINAL MODERN TABLE) --- */
+#rankingsImageSettings h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #374151;
+}
+
+/* Main container for the screenshot */
+#rankingsImagePreviewContainer {
+    background: #0d1117; /* A deep, near-black for a premium feel */
+    color: #e6edf3;
+    font-family: 'Inter', sans-serif;
+    padding: 2.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #30363d;
+    display: inline-block;
+    min-width: 100%;
+}
+
+/* Header Section */
+#rankingsImagePreviewContainer .preview-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+#rankingsImagePreviewContainer .preview-header h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.025em;
+}
+
+#rankingsImagePreviewContainer .preview-header p {
+    color: #8b949e;
+    font-size: 1rem;
+}
+
+/* Modern Table Styles */
+#rankingsImagePreviewContainer table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem; /* Compact font size */
+    white-space: nowrap;
+}
+
+#rankingsImagePreviewContainer th {
+    padding: 0.6rem 0.8rem; /* Compact padding */
+    font-weight: 600;
+    color: #8b949e;
+    background-color: #1f2937; /* CHANGED: Darker background for depth */
+    border-bottom: 1px solid #30363d;
+    text-align: center;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+}
+
+#rankingsImagePreviewContainer td {
+    padding: 0.6rem 0.8rem; /* Compact padding */
+    text-align: center;
+    border-top: 1px solid #30363d;
+}
+
+/* Text Alignment for Name/Team */
+#rankingsImagePreviewContainer .text-cell {
+    text-align: left;
+    font-weight: 500;
+    color: #c9d1d9;
+}
+
+/* Rank & Trophy Styling */
+#rankingsImagePreviewContainer .rank-cell {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #c9d1d9;
+}
+.trophy-icon {
+    margin-left: 0.5rem;
+    font-size: 0.9rem;
+}
+.trophy-gold { color: #facc15; }
+.trophy-silver { color: #e5e7eb; }
+.trophy-bronze { color: #f97316; }
+
+/* Score & Percentile Styling */
+#rankingsImagePreviewContainer .score-cell {
+    font-weight: 600;
+    font-family: 'ui-monospace', monospace;
+}
+#rankingsImagePreviewContainer .percentile-cell {
+    color: #8b949e;
+    font-size: 0.75rem;
+}
+
+/* Specific Score Colors (Applied to TEXT ONLY) */
+#rankingsImagePreviewContainer .effort-score-cell {
+    background-color: transparent !important;
+    color: #f97316 !important;
+}
+#rankingsImagePreviewContainer .compliance-score-cell {
+    background-color: transparent !important;
+    color: #3fb950 !important;
+}
+#rankingsImagePreviewContainer .arrivals-score-cell {
+    background-color: transparent !important;
+    color: #db61a2 !important;
+}
+
+/* Special styling for Final Score to make it POP */
+#rankingsImagePreviewContainer .final-score-cell {
+    background-color: rgba(88, 166, 255, 0.1); /* Subtle background highlight */
+    color: #58a6ff; /* Bright Blue Text */
+    font-size: 1rem;
+    font-weight: 700;
+}
+/* --- END: RANKINGS IMAGE MODAL STYLES (FINAL MODERN TABLE) --- */
+#rankingsTeamFilterDropdown {
+    z-index: 1000;
+}
