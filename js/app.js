@@ -5,7 +5,7 @@ import { columnsConfig } from './config.js';
 import { state } from './state.js';
 import { 
     populateAllDropdowns, renderColumnCheckboxes, loadProfilesFromStorage, loadProfile,
-    handleSidebarCollapse 
+    handleSidebarCollapse, openModal, closeModal 
 } from './ui.js';
 import { 
     applyAllFiltersAndRender, sortData, renderTable, renderTableHeaders 
@@ -148,6 +148,14 @@ function initializeApp() {
         state.mvrPspCdlData = transformedMvrPspCdlData;
         state.leadLifecycleData = data.leadLifecycleData || [];
         state.combinedDataForRankings = [...state.allData, ...state.drugTestsData, ...state.mvrPspCdlData, ...state.recruiterData, ...state.profilerData];
+
+        if (data.updatesData) {
+            const latestVersion = data.updatesData.version;
+            const lastSeenVersion = localStorage.getItem('lastSeenUpdateVersion');
+            if (latestVersion !== lastSeenVersion) {
+                openUpdateModal(data.updatesData);
+            }
+        }
 
         // --- UI Initialization (No changes here) ---
         if (state.allData.length > 0) {
@@ -358,6 +366,23 @@ function addEventListeners() {
             columnDropdown.classList.add('opacity-0', 'scale-95');
             setTimeout(() => columnDropdown.classList.add('hidden'), 200);
         }
+    });
+}
+// --- NEW: Function to open the update modal ---
+function openUpdateModal(update) {
+    const modal = document.getElementById('updateModal');
+    if (!modal) return;
+    
+    document.getElementById('updateModalTitle').textContent = update.title;
+    
+    document.getElementById('updateModalContent').innerHTML = update.notes;
+
+    openModal('updateModal');
+
+    // Close button event listener for the new modal
+    document.getElementById('closeUpdateModalBtn').addEventListener('click', () => {
+        closeModal('updateModal');
+        localStorage.setItem('lastSeenUpdateVersion', update.version);
     });
 }
 
