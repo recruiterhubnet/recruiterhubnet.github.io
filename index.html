@@ -52,6 +52,9 @@
         <main class="flex-1 overflow-y-auto">
             <div id="rankingsView" class="hidden space-y-4 p-4 md:p-6">
                 <div class="control-deck p-3 bg-gray-900/50 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <button id="openRankingsImageModalBtn" class="icon-btn" title="Create Rankings Image">
+                        <i class="fas fa-camera-retro"></i>
+                    </button>
                     <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch between profiler, recruiter and team rankings">
                         <button id="rankingsProfilerModeBtn" class="view-toggle-btn px-3 py-2 text-sm font-semibold rounded-md">Profiler</button> 
                         <button id="rankingsRecruiterModeBtn" class="view-toggle-btn active px-3 py-2 text-sm font-semibold rounded-md">Recruiter</button>
@@ -61,7 +64,7 @@
                     <div id="rankingsTeamFilterContainer" class="flex-1 min-w-[150px] relative" title="Filter by one or more teams">
                         <label for="rankingsTeamFilterBtn" class="block text-xs font-medium text-gray-400 mb-1">Team</label>
                         <button id="rankingsTeamFilterBtn" class="w-full control-deck-select text-left text-sm">All Teams</button>
-                        <div id="rankingsTeamFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                        <div id="rankingsTeamFilterDropdown" class="hidden absolute z-30 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto z-dropdown"></div>
                     </div>
 
                     <div class="flex-1 min-w-[150px] relative" title="Filter by one or more companies">
@@ -531,7 +534,6 @@
                     <div class="flex-1 min-w-[150px]"><label for="arrivalsTeamFilter" class="block text-xs font-medium text-gray-400 mb-1">Team</label><select id="arrivalsTeamFilter" class="w-full control-deck-select" title="Filter by team"></select></div>
                     <div class="flex-1 min-w-[150px]"><label for="arrivalsCompanyFilter" class="block text-xs font-medium text-gray-400 mb-1">Company</label><select id="arrivalsCompanyFilter" class="w-full control-deck-select" title="Filter by company"></select></div>
                     <div class="flex-1 min-w-[150px]"><label for="arrivalsContractFilter" class="block text-xs font-medium text-gray-400 mb-1">Contract</label><select id="arrivalsContractFilter" class="w-full control-deck-select" title="Filter by contract type"></select></div>
-                    <div class="flex-1 min-w-[150px]"><label for="arrivalsDrugTestFilter" class="block text-xs font-medium text-gray-400 mb-1">Drug Test Type</label><select id="arrivalsDrugTestFilter" class="w-full control-deck-select" title="Filter by drug test type"></select></div>
                     <div class="flex items-end gap-2 ml-auto">
                         <div title="Select the start date"><label for="arrivalsDateFromFilter" class="block text-xs font-medium text-gray-400 mb-1">From</label><input type="date" id="arrivalsDateFromFilter" class="w-full control-deck-input text-sm"></div>
                         <div title="Select the end date"><label for="arrivalsDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="arrivalsDateToFilter" class="w-full control-deck-input text-sm"></div>
@@ -835,19 +837,7 @@
                     </div>
                 
                     <!-- Accordion Item 5: Drug Test Filter -->
-                    <div class="settings-accordion-item" data-accordion-key="drugTest">
-                        <button class="settings-accordion-header">
-                            <span>Drug Test Filter</span>
-                            <i class="fas fa-chevron-down accordion-arrow"></i>
-                        </button>
-                        <div class="settings-accordion-content">
-                            <p class="text-sm text-gray-400 mb-3">Select which type of drug tests to include in the rankings.</p>
-                            <div class="p-4 bg-gray-800/50 rounded-lg">
-                                <label for="rankingsDrugTestFilter" class="block text-sm font-medium text-gray-400 mb-1">Drug Test Type</label>
-                                <select id="rankingsDrugTestFilter" class="modal-select w-full" title="Choose which drug test types to include in the arrivals score"></select>
-                            </div>
-                        </div>
-                    </div>
+                    
 
                     <div class="settings-accordion-item" data-accordion-key="medianCallDuration">
                         <button class="settings-accordion-header">
@@ -1146,6 +1136,34 @@
     <!-- Old modals from Lead Assignment are now removed -->
     <!-- <div id="laLifecycleSettingsModal" ...> ... </div> -->
     <!-- <div id="laChartExpandModal" ...> ... </div> -->
+
+    <div id="rankingsImageModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-screen-xl h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-image text-blue-400 text-xl"></i>
+                    <h3 class="text-xl font-semibold text-white">Create Rankings Image</h3>
+                </div>
+                <button id="closeRankingsImageModalBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
+            </header>
+            <main class="flex-grow flex overflow-hidden">
+                <aside id="rankingsImageSettings" class="w-1/4 p-4 border-r border-gray-700 overflow-y-auto space-y-4">
+                    </aside>
+                <div class="w-3/4 p-6 bg-gray-950 overflow-y-auto">
+                    
+                    <div id="rankingsImagePreviewContainer">
+                        </div>
+            
+                </div>
+            </main>
+            <footer class="p-4 bg-gray-900 border-t border-gray-700 flex justify-end items-center flex-shrink-0">
+                <button id="generateRankingsImageBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md text-sm transition-colors flex items-center gap-2">
+                    <i class="fas fa-download"></i>
+                    Generate Image
+                </button>
+            </footer>
+        </div>
+    </div>
 
     <script src="js/app.js" type="module"></script>
 </body>
