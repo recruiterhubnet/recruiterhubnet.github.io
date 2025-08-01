@@ -1352,6 +1352,18 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
         entry.rank = index + 1;
     });
 
+    // --- START: NEW DELEGATION % CALCULATION ---
+    const totalFinalScore = rankedData.reduce((sum, entry) => sum + (entry.final_score || 0), 0);
+
+    rankedData.forEach(entry => {
+        if (totalFinalScore > 0) {
+            entry.delegation_percent = (entry.final_score / totalFinalScore) * 100;
+        } else {
+            entry.delegation_percent = 0;
+        }
+    });
+    // --- END: NEW DELEGATION % CALCULATION ---
+
     return rankedData;
 }
 
@@ -2982,19 +2994,21 @@ function openRankingsImageModal() {
 
     const headerConfig = getRankingsHeaderConfig();
     const allColumnsInOrder = getRankingsColumnsInOrder();
+    allColumnsInOrder.push('delegation_percent'); // <-- ADD THIS LINE
 
     const columnLabels = {};
     headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
     Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
+    columnLabels['delegation_percent'] = 'Delegation %'; // <-- ADD THIS LINE
     allColumnsInOrder.forEach(key => {
-        if (key.includes('_percentile')) {
-            const baseKey = key.replace('_percentile', '');
-            columnLabels[key] = `${headerConfig.columnDetails[baseKey]?.label} %`;
-        }
-    });
+    if (key.includes('_percentile')) {
+        const baseKey = key.replace('_percentile', '');
+        columnLabels[key] = `${headerConfig.columnDetails[baseKey]?.label} %`;
+    }
+});
 
     const groups = {
-        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score'],
+        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score', 'delegation_percent'],
         "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
         "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
         "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'median_call_duration', 'median_call_duration_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
@@ -3073,6 +3087,7 @@ function renderRankingsImagePreview() {
 
     const headerConfig = getRankingsHeaderConfig();
     const getLabel = (key) => {
+        if (key === 'delegation_percent') return 'DELEGATION %';
         if (key.includes('_percentile')) {
             const baseKey = key.replace('_percentile', '');
             return `% ${headerConfig.columnDetails[baseKey]?.label}`;
@@ -3102,10 +3117,11 @@ function renderRankingsImagePreview() {
             if (['name', 'team'].includes(key)) cellClass = 'text-cell';
             if (key === 'rank') cellClass = 'rank-cell';
             if (key.includes('_score')) cellClass = `${key.replace(/_/g, '-')}-cell score-cell`;
+            if (key === 'delegation_percent') cellClass += ' final-score-cell';
             if (key.includes('percentile')) cellClass = 'percentile-cell';
 
             if (typeof row[key] === 'number') {
-                if (key.includes('percentile') || key.includes('_score') || ['leads_reached', 'past_due_ratio'].includes(key)) {
+                if (key.includes('percentile') || key.includes('_score') || ['leads_reached', 'past_due_ratio', 'delegation_percent'].includes(key)) {
                     value = `${row[key].toFixed(1)}%`;
                 } else if (['tte_value', 'median_time_to_profile', 'median_call_duration', 'call_duration_seconds'].includes(key)) {
                     value = formatDuration(row[key]);
