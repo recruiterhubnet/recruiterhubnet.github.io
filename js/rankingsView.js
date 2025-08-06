@@ -3177,10 +3177,34 @@ function generateRankingsImage() {
         windowWidth: previewElement.scrollWidth
     };
 
-    html2canvas(previewElement, options).then(canvas => {
+     html2canvas(previewElement, options).then(canvas => {
         const link = document.createElement('a');
-        const date = new Date().toISOString().split('T')[0];
-        link.download = `Rankings_Top10_${date}.png`;
+        
+        // --- START: New Filename Logic ---
+        const rowCountValue = document.getElementById('rankingsImageRowCount')?.value || '10';
+        const topPart = rowCountValue === 'all' ? 'Full' : `Top${rowCountValue}`;
+
+        const modeText = state.rankingsMode.charAt(0).toUpperCase() + state.rankingsMode.slice(1);
+        const modePart = `${modeText}Rankings`;
+
+        const fromDateStr = document.getElementById('rankingsDateFromFilter').value;
+        const toDateStr = document.getElementById('rankingsDateToFilter').value;
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            // Use UTC methods to avoid timezone issues
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${month}.${day}`;
+        };
+        const datePart = `${formatDate(fromDateStr)}-${formatDate(toDateStr)}`;
+        
+        const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
+        const contractPart = selectedContracts.join(',') || 'None';
+
+        link.download = `${topPart}_${modePart}_${datePart}_${contractPart}.png`;
+        // --- END: New Filename Logic ---
+
         link.href = canvas.toDataURL('image/png');
         link.click();
     }).catch(err => {
@@ -3311,4 +3335,5 @@ function getRankingsColumnsInOrder() {
         'arrivals_score', 'total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile',
     ];
 }
+
 
