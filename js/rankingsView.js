@@ -1496,7 +1496,7 @@ function renderRankingsHeaders() {
         sms_score: "A weighted score reflecting SMS activity, combining total and unique SMS sent. Higher is better.",
         outbound_calls: perLead.outbound_calls ? "The average number of outbound calls made per lead assigned. Higher is better." : "The total number of outbound calls made. Higher is better.",
         unique_calls: perLead.unique_calls ? "The average number of unique phone numbers contacted per lead assigned. Higher is better." : "The total number of unique phone numbers contacted via an outbound call. Higher is better.",
-        call_duration_seconds: perLead.call_duration_seconds ? "The average duration in minutes of all outbound calls per lead assigned. Higher is better." : "The total duration in minutes of all outbound calls. Higher is better.",
+        call_duration_seconds: perLead.call_duration_seconds ? "The average duration in seconds of all outbound calls per lead assigned. Higher is better." : "The total duration in seconds of all outbound calls. Higher is better.",
         outbound_sms: perLead.outbound_sms ? "The average number of outbound SMS messages sent per lead assigned. Higher is better." : "The total number of outbound SMS messages sent. Higher is better.",
         unique_sms: perLead.unique_sms ? "The average number of unique phone numbers contacted via SMS per lead assigned. Higher is better." : "The total number of unique phone numbers contacted via outbound SMS. Higher is better.",
         profiler_note_lenght_all: "The average length of notes entered by a profiler for the leads they've worked on. Higher is better. (Applies to Profilers)",
@@ -3311,3 +3311,4 @@ function getRankingsColumnsInOrder() {
         'arrivals_score', 'total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile',
     ];
 }
+
