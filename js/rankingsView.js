@@ -3137,7 +3137,20 @@ function renderRankingsImagePreview() {
     const dateFrom = document.getElementById('rankingsDateFromFilter').value;
     const dateTo = document.getElementById('rankingsDateToFilter').value;
     const modeText = state.rankingsMode.charAt(0).toUpperCase() + state.rankingsMode.slice(1);
-    const titleText = rowCountValue === 'all' ? `Full ${modeText} Rankings` : `Top ${rowCountValue} ${modeText} Rankings`;
+
+    // Get selected contracts and filter out 'ALL'
+    const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
+    const specificContracts = selectedContracts.filter(c => c.toUpperCase() !== 'ALL');
+
+    let contractText = '';
+    // If there are specific contracts selected, format them for the title
+    if (specificContracts.length > 0) {
+        contractText = ` (${specificContracts.join(', ')})`;
+    }
+
+    const titleText = rowCountValue === 'all' 
+        ? `Full ${modeText} Rankings${contractText}` 
+        : `Top ${rowCountValue} ${modeText} Rankings${contractText}`;
 
     previewContainer.innerHTML = `
         <div class="preview-header">
