@@ -158,18 +158,9 @@ function initializeRankingsSettingsModal() {
 
 
     // Exclusion Rules Logic
-    document.getElementById('addExclusionRuleBtn').addEventListener('click', () => addExclusionRule());
-    document.getElementById('exclusionRulesContainer').addEventListener('click', (e) => {
-        if (e.target.closest('.remove-exclusion-rule-btn')) {
-            e.target.closest('.exclusion-rule-item').remove();
-            if (!document.querySelector('.exclusion-rule-item')) {
-                 document.getElementById('exclusionRulesContainer').innerHTML = `<p class="text-gray-500 text-sm">No exclusion rules defined.</p>`;
-            }
-        }
-    });
+   
 
-    document.getElementById('exclusionLogicAND').addEventListener('click', (e) => setExclusionLogic(e.target.dataset.logic));
-    document.getElementById('exclusionLogicOR').addEventListener('click', (e) => setExclusionLogic(e.target.dataset.logic));
+ 
 }
 
 function openRankingsSettingsModal() {
@@ -231,28 +222,22 @@ function loadSettingsToModal() {
         document.getElementById('tteLeadTypeContainer').style.display = (tteSource || 'standard') === 'standard' ? 'block' : 'none';
     }
 
-
     // Leads Reached Settings
     document.getElementById('leadsReachedSource').value = leadsReachedSource || 'standard';
     document.getElementById('leadsReachedLeadType').value = leadsReachedLeadType;
     if (isProfilerMode) {
-        // For Profiler, check the Profiler-specific dropdown value
         const tteSourceProfilerValue = document.getElementById('tteSourceProfiler').value;
         document.getElementById('tteLeadTypeContainer').style.display = tteSourceProfilerValue === 'standard' ? 'block' : 'none';
 
         const leadsReachedSourceProfilerValue = document.getElementById('leadsReachedSourceProfiler').value;
         document.getElementById('leadsReachedLeadTypeContainer').style.display = leadsReachedSourceProfilerValue === 'standard' ? 'block' : 'none';
     } else {
-        // For Recruiter/Team, check the standard dropdown value
         document.getElementById('tteLeadTypeContainer').style.display = (tteSource || 'standard') === 'standard' ? 'block' : 'none';
         document.getElementById('leadsReachedLeadTypeContainer').style.display = (leadsReachedSource || 'standard') === 'standard' ? 'block' : 'none';
     }
 
-    // Load the new profiler-specific settings
     document.getElementById('tteSourceProfiler').value = tteSourceProfiler || 'standard';
     document.getElementById('leadsReachedSourceProfiler').value = leadsReachedSourceProfiler || 'standard';
-
-   
 
     const perLeadContainer = document.getElementById('perLeadMetricsContainer');
     const perLeadMetrics = settings.perLeadMetrics || {};
@@ -269,8 +254,10 @@ function loadSettingsToModal() {
         </label>
     `).join('');
 
-    renderExclusionRules(exclusionRules);
-    setExclusionLogic(exclusionLogic);
+    const exclusionContainer = document.getElementById('exclusionRulesContainer');
+    exclusionContainer.innerHTML = ''; // Clear previous content
+    const rulesUI = renderExclusionRules(exclusionRules || [], exclusionLogic || 'AND', true);
+    exclusionContainer.appendChild(rulesUI);
 }
 
 function saveRankingsSettings() {
@@ -293,7 +280,6 @@ function saveRankingsSettings() {
     settingsToUpdate.ttePValue = document.getElementById('ttePercentileSelect').value;
     settingsToUpdate.leadsReachedLeadType = document.getElementById('leadsReachedLeadType').value;
     
-    
     if (isProfilerMode) {
         settingsToUpdate.tteSourceProfiler = document.getElementById('tteSourceProfiler').value;
         settingsToUpdate.leadsReachedSourceProfiler = document.getElementById('leadsReachedSourceProfiler').value;
@@ -307,15 +293,34 @@ function saveRankingsSettings() {
         settingsToUpdate.perLeadMetrics[checkbox.dataset.key] = checkbox.checked;
     });
 
-    settingsToUpdate.exclusionRules = [];
-    document.querySelectorAll('.exclusion-rule-item').forEach(item => {
-        settingsToUpdate.exclusionRules.push({
-            metric: item.querySelector('.exclusion-metric').value,
-            operator: item.querySelector('.exclusion-operator').value,
-            value: Number(item.querySelector('.exclusion-value').value)
-        });
-    });
-    settingsToUpdate.exclusionLogic = document.querySelector('.exclusion-logic-btn.active').dataset.logic;
+    const parseGroup = (groupElement) => {
+        const rules = [];
+        const content = groupElement.querySelector('.exclusion-group-content, .exclusion-top-level-content');
+        if (content) {
+            Array.from(content.children).forEach(child => {
+                if (child.classList.contains('exclusion-rule-item')) {
+                    const metric = child.querySelector('.exclusion-metric').value;
+                    const valueEl = child.querySelector('.exclusion-value');
+                    const operatorEl = child.querySelector('.exclusion-operator');
+                    if (['team', 'recruiter', 'profiler'].includes(metric)) {
+                        rules.push({ metric, value: valueEl.value });
+                    } else {
+                        rules.push({ metric, operator: operatorEl.value, value: Number(valueEl.value) });
+                    }
+                } else if (child.classList.contains('exclusion-rule-group')) {
+                    rules.push(parseGroup(child));
+                }
+            });
+        }
+        const logic = groupElement.querySelector('.exclusion-group-logic .active').dataset.logic;
+        return { type: 'group', logic, rules };
+    };
+    
+    const topLevelElement = document.getElementById('exclusionRulesContainer').children[0];
+    const parsedData = parseGroup(topLevelElement);
+
+    settingsToUpdate.exclusionRules = parsedData.rules;
+    settingsToUpdate.exclusionLogic = parsedData.logic;
 
     const storageKey = isProfilerMode ? 'rankingSettingsProfiler' : 'rankingSettings';
     localStorage.setItem(storageKey, JSON.stringify(settingsToUpdate));
@@ -325,7 +330,8 @@ function saveRankingsSettings() {
 }
 
 function getExclusionMetricOptions() {
-    return [
+    const isProfilerMode = state.rankingsMode === 'profiler';
+    let options = [
         { value: 'total_leads', label: 'Min Total Leads' },
         { value: 'outbound_calls', label: 'Min Total Calls' },
         { value: 'call_duration_seconds', label: 'Min Call Duration (s)' },
@@ -333,44 +339,125 @@ function getExclusionMetricOptions() {
         { value: 'active_days', label: 'Min Active Days' },
         { value: 'onboarded', label: 'Min Onboarded' },
         { value: 'total_drug_tests', label: 'Min Drug Tests' },
-        { value: 'profiler_note_lenght_all', label: 'Min Note Lenght' }
     ];
-}
 
-function renderExclusionRules(rules) {
-    const container = document.getElementById('exclusionRulesContainer');
-    container.innerHTML = '';
-    if (rules && rules.length > 0) {
-        rules.forEach(rule => addExclusionRule(rule));
+    if (isProfilerMode) {
+        options.push({ value: 'profiler_note_lenght_all', label: 'Min Note Lenght' });
+        options.push({ value: 'profiler', label: 'Specific Profiler' });
     } else {
-        container.innerHTML = `<p class="text-gray-500 text-sm">No exclusion rules defined.</p>`;
+        options.push({ value: 'team', label: 'Specific Team' });
+        options.push({ value: 'recruiter', label: 'Specific Recruiter' });
+    }
+    return options;
+}
+
+function getExclusionValueInputHTML(rule = null) {
+    const metric = rule ? rule.metric : 'total_leads';
+    const isEntitySelector = ['team', 'recruiter', 'profiler'].includes(metric);
+
+    if (isEntitySelector) {
+        const isProfilerMode = state.rankingsMode === 'profiler';
+        let optionsData = [];
+        if (metric === 'team') {
+            optionsData = [...new Set(state.combinedDataForRankings.map(d => d.team_name).filter(Boolean))];
+        } else if (metric === 'recruiter') {
+            optionsData = [...new Set(state.combinedDataForRankings.filter(d => d.team_name !== 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
+        } else if (metric === 'profiler') {
+            optionsData = [...new Set(state.combinedDataForRankings.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
+        }
+        optionsData.sort();
+
+        const options = optionsData.map(opt => `<option value="${opt}" ${rule && rule.value === opt ? 'selected' : ''}>${opt}</option>`).join('');
+
+        return `
+            <select class="modal-select exclusion-value flex-grow">${options}</select>
+            <div class="w-24"></div> 
+        `;
+    } else {
+        // Default number input for existing metric types
+        const operatorOptions = ['>=', '<=', '='].map(op => `<option value="${op}" ${rule && rule.operator === op ? 'selected' : ''}>${op}</option>`).join('');
+        return `
+            <select class="modal-select exclusion-operator w-24">${operatorOptions}</select>
+            <input type="number" class="modal-input exclusion-value w-24" value="${rule ? rule.value : 0}" min="0">
+        `;
     }
 }
 
-function addExclusionRule(rule = null) {
-    const container = document.getElementById('exclusionRulesContainer');
-    if (container.querySelector('p')) {
-        container.innerHTML = '';
+function renderExclusionRules(rules, logic = 'AND', isTopLevel = false) {
+    const container = document.createElement('div');
+    container.className = isTopLevel ? '' : 'exclusion-rule-group';
+
+    const header = document.createElement('div');
+    header.className = 'exclusion-group-header';
+    header.innerHTML = `
+        <div class="exclusion-group-logic">
+            <button data-logic="AND" class="exclusion-logic-btn ${logic === 'AND' ? 'active' : ''}">AND</button>
+            <button data-logic="OR" class="exclusion-logic-btn ${logic === 'OR' ? 'active' : ''}">OR</button>
+        </div>
+        <div class="exclusion-group-actions">
+            <button class="add-rule-btn text-xs"><i class="fas fa-plus"></i> Rule</button>
+            <button class="add-group-btn text-xs"><i class="fas fa-plus-circle"></i> Group</button>
+            ${!isTopLevel ? '<button class="remove-group-btn text-xs"><i class="fas fa-trash"></i></button>' : ''}
+        </div>
+    `;
+    container.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = isTopLevel ? 'exclusion-top-level-content' : 'exclusion-group-content';
+    container.appendChild(content);
+
+    if (rules && rules.length > 0) {
+        rules.forEach(rule => {
+            if (rule.type === 'group') {
+                content.appendChild(renderExclusionRules(rule.rules, rule.logic, false));
+            } else {
+                content.appendChild(createRuleElement(rule));
+            }
+        });
     }
 
+    header.querySelector('.add-rule-btn').addEventListener('click', () => {
+        content.appendChild(createRuleElement());
+    });
+    header.querySelector('.add-group-btn').addEventListener('click', () => {
+        content.appendChild(renderExclusionRules([], 'AND', false));
+    });
+    if (!isTopLevel) {
+        header.querySelector('.remove-group-btn').addEventListener('click', () => container.remove());
+    }
+    header.querySelectorAll('.exclusion-logic-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            header.querySelectorAll('.exclusion-logic-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    return container;
+}
+
+function createRuleElement(rule = null) {
     const item = document.createElement('div');
-    item.className = 'exclusion-rule-item flex items-center gap-2';
+    item.className = 'exclusion-rule-item';
 
     const metricOptions = getExclusionMetricOptions().map(opt =>
         `<option value="${opt.value}" ${rule && rule.metric === opt.value ? 'selected' : ''}>${opt.label}</option>`
     ).join('');
 
-    const operatorOptions = ['>=', '<=', '='].map(op =>
-        `<option value="${op}" ${rule && rule.operator === op ? 'selected' : ''}>${op}</option>`
-    ).join('');
-
     item.innerHTML = `
         <select class="modal-select exclusion-metric flex-grow">${metricOptions}</select>
-        <select class="modal-select exclusion-operator w-24">${operatorOptions}</select>
-        <input type="number" class="modal-input exclusion-value w-24" value="${rule ? rule.value : 0}" min="0">
-        <button class="remove-exclusion-rule-btn icon-btn hover:bg-red-500/20 hover:text-red-400 p-2"><i class="fas fa-trash-alt"></i></button>
+        <div class="exclusion-value-container flex-grow flex items-center gap-2">
+            ${getExclusionValueInputHTML(rule)}
+        </div>
+        <button class="remove-exclusion-rule-btn icon-btn"><i class="fas fa-trash-alt"></i></button>
     `;
-    container.appendChild(item);
+
+    item.querySelector('.remove-exclusion-rule-btn').addEventListener('click', () => item.remove());
+    item.querySelector('.exclusion-metric').addEventListener('change', (e) => {
+        const selectedMetric = e.target.value;
+        const valueContainer = item.querySelector('.exclusion-value-container');
+        valueContainer.innerHTML = getExclusionValueInputHTML({ metric: selectedMetric });
+    });
+    return item;
 }
 
 function setExclusionLogic(logic) {
@@ -945,10 +1032,20 @@ function applyExclusionRules(aggregatedData, settings) {
         return aggregatedData;
     }
 
-    return aggregatedData.filter(entity => {
+    const evaluateRule = (entity, rule) => {
         const totalLeads = (entity.new_leads_assigned_on_date || 0) + (entity.old_leads_assigned_on_date || 0);
-
-        const ruleResults = exclusionRules.map(rule => {
+        if (rule.type === 'group') {
+            const groupResults = rule.rules.map(innerRule => evaluateRule(entity, innerRule));
+            if (rule.logic === 'AND') {
+                return groupResults.every(res => res);
+            } else {
+                return groupResults.some(res => res);
+            }
+        } else {
+            // Individual rule evaluation
+            if (rule.metric === 'team') return entity.team === rule.value;
+            if (rule.metric === 'recruiter' || rule.metric === 'profiler') return entity.name === rule.value;
+            
             const entityValue = rule.metric === 'total_leads' ? totalLeads : (entity[rule.metric] || 0);
             const ruleValue = rule.value;
             switch (rule.operator) {
@@ -957,13 +1054,12 @@ function applyExclusionRules(aggregatedData, settings) {
                 case '=':  return entityValue == ruleValue;
                 default: return false;
             }
-        });
-
-        if (exclusionLogic === 'AND') {
-            return !ruleResults.every(result => result === true);
-        } else {
-            return !ruleResults.some(result => result === true);
         }
+    };
+
+    return aggregatedData.filter(entity => {
+        const mainGroup = { type: 'group', logic: exclusionLogic, rules: exclusionRules };
+        return !evaluateRule(entity, mainGroup);
     });
 }
 
@@ -3000,12 +3096,16 @@ function openRankingsImageModal() {
     headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
     Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
     columnLabels['delegation_percent'] = 'Delegation %'; // <-- ADD THIS LINE
-    allColumnsInOrder.forEach(key => {
-    if (key.includes('_percentile')) {
-        const baseKey = key.replace('_percentile', '');
-        columnLabels[key] = `${headerConfig.columnDetails[baseKey]?.label} %`;
-    }
-});
+   allColumnsInOrder.forEach(key => {
+        if (key.includes('_percentile')) {
+            let baseKey = key.replace('_percentile', '');
+            // This handles the special case where the value key is 'tte_value'
+            if (baseKey === 'tte') {
+                baseKey = 'tte_value';
+            }
+            columnLabels[key] = `${headerConfig.columnDetails[baseKey]?.label} %`;
+        }
+    });
 
     const groups = {
         "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score', 'delegation_percent'],
@@ -3016,7 +3116,7 @@ function openRankingsImageModal() {
     };
 
     // --- NEW: HTML for the row count selector ---
-    const displayOptionsHtml = `
+  const displayOptionsHtml = `
         <div>
             <h4>Display Options</h4>
             <div class="space-y-1 mt-2">
@@ -3024,9 +3124,9 @@ function openRankingsImageModal() {
                     <span class="text-sm text-gray-300">Number of Rows</span>
                     <select id="rankingsImageRowCount" class="modal-select w-24 !py-1">
                         <option value="5">Top 5</option>
-                        <option value="10" selected>Top 10</option>
+                        <option value="10">Top 10</option>
                         <option value="20">Top 20</option>
-                        <option value="all">All</option>
+                        <option value="all" selected>All</option>
                     </select>
                 </label>
             </div>
@@ -3149,7 +3249,7 @@ function renderRankingsImagePreview() {
     }
 
     const titleText = rowCountValue === 'all' 
-        ? `Full ${modeText} Rankings${contractText}` 
+        ? `${modeText} Rankings${contractText}` 
         : `Top ${rowCountValue} ${modeText} Rankings${contractText}`;
 
     previewContainer.innerHTML = `
@@ -3177,32 +3277,34 @@ function generateRankingsImage() {
         windowWidth: previewElement.scrollWidth
     };
 
-     html2canvas(previewElement, options).then(canvas => {
+    html2canvas(previewElement, options).then(canvas => {
         const link = document.createElement('a');
         
         // --- START: New Filename Logic ---
         const rowCountValue = document.getElementById('rankingsImageRowCount')?.value || '10';
-        const topPart = rowCountValue === 'all' ? 'Full' : `Top${rowCountValue}`;
+    // MODIFIED: topPart is now an empty string if 'all' is selected
+    const topPart = rowCountValue === 'all' ? '' : `Top${rowCountValue}_`;
 
-        const modeText = state.rankingsMode.charAt(0).toUpperCase() + state.rankingsMode.slice(1);
-        const modePart = `${modeText}Rankings`;
+    const modeText = state.rankingsMode.charAt(0).toUpperCase() + state.rankingsMode.slice(1);
+    const modePart = `${modeText}Rankings`;
 
-        const fromDateStr = document.getElementById('rankingsDateFromFilter').value;
-        const toDateStr = document.getElementById('rankingsDateToFilter').value;
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '';
-            const date = new Date(dateStr);
-            // Use UTC methods to avoid timezone issues
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            return `${month}.${day}`;
-        };
-        const datePart = `${formatDate(fromDateStr)}-${formatDate(toDateStr)}`;
-        
-        const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
-        const contractPart = selectedContracts.join(',') || 'None';
+    const fromDateStr = document.getElementById('rankingsDateFromFilter').value;
+    const toDateStr = document.getElementById('rankingsDateToFilter').value;
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        // Use UTC methods to avoid timezone issues
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return `${month}.${day}`;
+    };
+    const datePart = `${formatDate(fromDateStr)}-${formatDate(toDateStr)}`;
+    
+    const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
+    const contractPart = selectedContracts.join(',') || 'None';
 
-        link.download = `${topPart}_${modePart}_${datePart}_${contractPart}.png`;
+    // MODIFIED: Concatenate topPart to the filename
+    link.download = `${topPart}${modePart}_${datePart}_${contractPart}.png`;
         // --- END: New Filename Logic ---
 
         link.href = canvas.toDataURL('image/png');
@@ -3335,5 +3437,3 @@ function getRankingsColumnsInOrder() {
         'arrivals_score', 'total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile',
     ];
 }
-
-
