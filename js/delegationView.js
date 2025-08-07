@@ -106,6 +106,8 @@ function calculateDataForEntityType(entityType) {
     const dateFilterInputs = document.querySelectorAll('#delegationView #date-filters input[type="date"]');
     const fromDate = new Date(dateFilterInputs[0].value);
     const toDate = new Date(new Date(dateFilterInputs[1].value).getTime() + (24 * 60 * 60 * 1000 - 1));
+    const allTeamData = [...appState.allData, ...appState.drugTestsData, ...appState.mvrPspCdlData, ...appState.recruiterData, ...appState.profilerData];
+    const validTeams = [...new Set(allTeamData.map(d => d.team_name).filter(t => t && t !== 'Profilers'))];
 
     // --- RANK SCORE CALCULATION (Global) ---
     // This section is now aligned with the filtering logic in rankingsView.js
@@ -114,7 +116,7 @@ function calculateDataForEntityType(entityType) {
         if (entityType === 'profiler') {
             return row.team_name === 'Profilers';
         }
-        return row.team_name !== 'Profilers';
+        return validTeams.includes(row.team_name);
     };
 
     const dateFilter = (row) => {
@@ -1655,24 +1657,33 @@ function downloadDelegationAsImage() {
         innerHTML += `<h2 class="entity-name">${entityRow.entity}</h2>`;
         innerHTML += `<div class="delegation-details">`;
         
-        const breakdownParts = [];
+        const visibleItemIds = [
+            ...state.settings.contracts.filter(c => state.settings.visibility[c.id]).map(c => c.id),
+            ...state.settings.groups.filter(g => state.settings.visibility[g.id]).map(g => g.id)
+        ];
+        const allContractId = state.settings.contracts.find(c => c.name.toUpperCase() === 'ALL')?.id;
+
+        const allCompaniesBreakdown = [];
         const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
 
         for (const company of sortedCompanies) {
             const contracts = entityRow.companyBreakdowns[company]
-                // ... (rest of the loop is the same) ...
+                .filter(b => {
+                    const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
+                    // Exclude if it has no projection, is not visible, or is the 'ALL' contract
+                    return item && b.projDel > 0 && visibleItemIds.includes(item.id) && item.id !== allContractId;
+                })
                 .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
-            
+
             if (contracts.length > 0) {
                 const companyClass = `company-${company.toLowerCase().replace(/\s+/g, '-')}`;
-                breakdownParts.push(`<strong class="${companyClass}">${company}:</strong> ${contracts.join(', ')}`);
+                allCompaniesBreakdown.push(`<strong class="${companyClass}">${company}:</strong> ${contracts.join(', ')}`);
             }
         }
-        
-        const hasDelegations = breakdownParts.length > 0;
-        
-        if (hasDelegations) {
-            innerHTML += breakdownParts.map(part => `<p>${part}</p>`).join('');
+
+        if (allCompaniesBreakdown.length > 0) {
+            // Join companies with the "|" separator for the new format
+            innerHTML += `<p>${allCompaniesBreakdown.join('<span style="color: #4b5563; margin: 0 0.75rem; font-weight: 300;">|</span>')}</p>`;
         } else {
             innerHTML += `<p class="no-delegation-text">No projected delegations.</p>`;
         }
