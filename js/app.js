@@ -64,6 +64,7 @@ function initializeApp() {
             old_leads_assigned_on_date: Number(row.old_leads_assigned_on_date || 0),
             hot_leads_assigned: (Number(row.new_hot_leads_assigned_on_date) || 0) + (Number(row.old_hot_leads_assigned_on_date) || 0),
             fresh_leads_assigned_on_date: Number(row.fresh_leads_assigned_on_date || 0), 
+            recycled_leads: Number(row.recycled_leads || 0),
             profiles_profiled: Number(row.total_profiled_leads_on_date || 0),
             profiles_completed: Number(row.closed_on_date || 0),
             median_time_to_profile: row.median_time_to_profile || "N/A",
