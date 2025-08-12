@@ -2129,11 +2129,18 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 
 /* Special styling for Final Score to make it POP */
 #rankingsImagePreviewContainer .final-score-cell {
-    background-color: rgba(88, 166, 255, 0.1); /* Subtle background highlight */
-    color: #58a6ff; /* Bright Blue Text */
+    background-color: transparent !important; /* Force no background color */
+    color: #ef4444 !important;               /* Force vibrant red text color */
     font-size: 1rem;
     font-weight: 700;
 }
+
+#rankingsImagePreviewContainer th[class*="delegation-"]:not(.delegation-percent-cell),
+#rankingsImagePreviewContainer td[class*="delegation-"]:not(.delegation-percent-cell) {
+    background-color: rgba(88, 166, 255, 0.1) !important; /* Subtle background highlight */
+    color: #58a6ff !important; /* Bright Blue Text */
+}
+
 /* --- END: RANKINGS IMAGE MODAL STYLES (FINAL MODERN TABLE) --- */
 #rankingsTeamFilterDropdown {
     z-index: 1000;
@@ -2264,3 +2271,35 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     flex-direction: column;
     gap: 0.75rem;
 }
+/* --- START: New Exclusion Rule Editor Styles --- */
+.rule-set-item {
+    border-bottom: 1px solid #374151; /* gray-700 */
+    transition: background-color 0.2s;
+}
+.rule-set-item:hover {
+    background-color: #374151; /* gray-700 */
+}
+.rule-set-item:last-child {
+    border-bottom: none;
+}
+#exclusionRuleEditorPanel .editor-tab-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #9ca3af;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px; /* Overlap the container border */
+}
+#exclusionRuleEditorPanel .editor-tab-btn.active {
+    color: #60a5fa;
+    border-bottom-color: #60a5fa;
+}
+.specific-rule-name-input {
+    padding: 0;
+    height: auto;
+}
+.specific-rule-name-input:focus {
+    box-shadow: none;
+    background-color: #374151 !important; /* !important to override modal-input styles */
+}
+/* --- END: New Exclusion Rule Editor Styles --- */
