@@ -3,6 +3,7 @@ import { openModal, closeModal, populateMultiSelectFilter, formatNumber, formatD
 
 let isInitialized = false;
 let activeTooltip = null;
+let currentlyEditingRuleSet = { type: 'default', id: null }; 
 
 // --- HELPER FUNCTIONS ---
 function parseTTEValue(value) {
@@ -116,27 +117,24 @@ function initializeRankingsSettingsModal() {
     const modal = document.getElementById('rankingsSettingsModal');
     if (!modal) return;
 
-
-
-    document.getElementById('closeRankingsSettingsBtn').addEventListener('click', () => modal.classList.add('hidden'));
+    document.getElementById('closeRankingsSettingsBtn').addEventListener('click', () => closeModal('rankingsSettingsModal'));
     document.getElementById('saveRankingsSettingsBtn').addEventListener('click', saveRankingsSettings);
 
-    modal.querySelectorAll('.settings-nav-btn').forEach(button => {
+    modal.querySelectorAll('.settings-nav-btn[data-section]').forEach(button => {
         button.addEventListener('click', () => {
-            modal.querySelectorAll('.settings-nav-btn').forEach(btn => btn.classList.remove('active', 'border-blue-500', 'text-white'));
+            modal.querySelectorAll('.settings-nav-btn[data-section]').forEach(btn => btn.classList.remove('active', 'border-blue-500', 'text-white'));
             button.classList.add('active', 'border-blue-500', 'text-white');
             modal.querySelectorAll('.settings-section').forEach(section => section.classList.add('hidden'));
             document.getElementById(button.dataset.section).classList.remove('hidden');
         });
     });
 
-    // --- ACCORDION LOGIC ---
+    // Accordion Logic
     const secondaryFiltersSection = document.getElementById('secondaryFiltersSection');
     secondaryFiltersSection.addEventListener('click', (e) => {
         const header = e.target.closest('.settings-accordion-header');
         if (header) {
-            const item = header.parentElement;
-            item.classList.toggle('is-open');
+            header.parentElement.classList.toggle('is-open');
         }
     });
 
@@ -147,8 +145,6 @@ function initializeRankingsSettingsModal() {
     document.getElementById('leadsReachedSource').addEventListener('change', (e) => {
         document.getElementById('leadsReachedLeadTypeContainer').style.display = e.target.value === 'standard' ? 'block' : 'none';
     });
-
-    // New listeners for the Profiler-specific dropdowns
     document.getElementById('tteSourceProfiler').addEventListener('change', (e) => {
         document.getElementById('tteLeadTypeContainer').style.display = e.target.value === 'standard' ? 'block' : 'none';
     });
@@ -156,11 +152,104 @@ function initializeRankingsSettingsModal() {
         document.getElementById('leadsReachedLeadTypeContainer').style.display = e.target.value === 'standard' ? 'block' : 'none';
     });
 
+    // NEW event listeners for the exclusion rule manager
+    const exclusionSection = document.getElementById('exclusionRulesSection');
+    exclusionSection.addEventListener('click', e => {
+        const isProfilerMode = state.rankingsMode === 'profiler';
+        const settings = isProfilerMode ? state.rankingSettingsProfiler : state.rankingSettings;
 
-    // Exclusion Rules Logic
-   
+        // Switch between rule sets in the left panel
+        const ruleSetItem = e.target.closest('.rule-set-item');
+        if (ruleSetItem) {
+            currentlyEditingRuleSet = {
+                type: ruleSetItem.dataset.type,
+                id: ruleSetItem.dataset.id || null
+            };
+            renderExclusionRuleManagerUI();
+            return;
+        }
 
- 
+        // Add a new specific rule set
+        if (e.target.closest('#addNewSpecificRuleBtn')) {
+            const newRuleSet = {
+                id: `spec_${Date.now()}`,
+                name: 'New Specific Rule',
+                targets: [],
+                logic: 'AND',
+                rules: []
+            };
+            settings.exclusionRules.specific.push(newRuleSet);
+            currentlyEditingRuleSet = { type: 'specific', id: newRuleSet.id };
+            renderExclusionRuleManagerUI();
+            return;
+        }
+
+        const editorPanel = document.getElementById('exclusionRuleEditorPanel');
+        if (!editorPanel) return;
+
+        // Switch between "Rules" and "Applied To" tabs in the right panel
+        const tabBtn = e.target.closest('.editor-tab-btn');
+        if (tabBtn) {
+            editorPanel.querySelectorAll('.editor-tab-btn').forEach(btn => btn.classList.remove('active'));
+            tabBtn.classList.add('active');
+            editorPanel.querySelectorAll('.editor-tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(`editor-tab-content-${tabBtn.dataset.tab}`).classList.remove('hidden');
+            return;
+        }
+
+        // Handle target management
+        if (e.target.closest('#addTargetBtn')) {
+            const company = document.getElementById('newTargetCompany').value;
+            const contract = document.getElementById('newTargetContract').value;
+            if (company && contract) {
+                const ruleSet = settings.exclusionRules.specific.find(rs => rs.id === currentlyEditingRuleSet.id);
+                if (ruleSet && !ruleSet.targets.some(t => t.company === company && t.contract === contract)) {
+                    ruleSet.targets.push({ company, contract });
+                    renderExclusionRuleManagerUI();
+                }
+            }
+            return;
+        }
+        
+        const removeTargetBtn = e.target.closest('.remove-target-btn');
+        if (removeTargetBtn) {
+            const targetTag = removeTargetBtn.closest('.target-tag');
+            const { company, contract } = targetTag.dataset;
+            const ruleSet = settings.exclusionRules.specific.find(rs => rs.id === currentlyEditingRuleSet.id);
+            if (ruleSet) {
+                ruleSet.targets = ruleSet.targets.filter(t => !(t.company === company && t.contract === contract));
+                renderExclusionRuleManagerUI();
+            }
+            return;
+        }
+        
+        // Delete a whole specific rule set
+        if (e.target.closest('.remove-specific-rule-btn')) {
+            if (confirm('Are you sure you want to delete this specific rule set?')) {
+                settings.exclusionRules.specific = settings.exclusionRules.specific.filter(rs => rs.id !== currentlyEditingRuleSet.id);
+                currentlyEditingRuleSet = { type: 'default', id: null }; // Fallback to default view
+                renderExclusionRuleManagerUI();
+            }
+            return;
+        }
+    });
+
+    // Listen for name changes
+    exclusionSection.addEventListener('input', e => {
+        if (e.target.classList.contains('specific-rule-name-input')) {
+            const isProfilerMode = state.rankingsMode === 'profiler';
+            const settings = isProfilerMode ? state.rankingSettingsProfiler : state.rankingSettings;
+            const ruleSet = settings.exclusionRules.specific.find(rs => rs.id === currentlyEditingRuleSet.id);
+            if (ruleSet) {
+                ruleSet.name = e.target.value;
+                // Also update the name in the left-hand list in real-time
+                const listItem = document.querySelector(`.rule-set-item[data-id="${ruleSet.id}"]`);
+                if (listItem) {
+                    listItem.childNodes[0].nodeValue = e.target.value.trim();
+                }
+            }
+        }
+    });
 }
 
 function openRankingsSettingsModal() {
@@ -197,10 +286,11 @@ function loadSettingsToModal() {
 
     const { 
         activeDayRules, ttePValue, tteLeadType, tteSource, tteSourceProfiler,
-        leadsReachedLeadType, leadsReachedSource, leadsReachedSourceProfiler, drugTestType, 
-        exclusionRules, exclusionLogic, callSmsDataSource, medianCallDurationSource
+        leadsReachedLeadType, leadsReachedSource, leadsReachedSourceProfiler,
+        callSmsDataSource, medianCallDurationSource
     } = settings;
 
+    // --- Load "Active Day Rules" and other settings ---
     document.getElementById('workday_activeDayConditions').value = activeDayRules.workdays.conditionsToMeet;
     document.getElementById('workday_minCalls').value = activeDayRules.workdays.calls;
     document.getElementById('workday_minDuration').value = activeDayRules.workdays.duration;
@@ -214,31 +304,25 @@ function loadSettingsToModal() {
     document.getElementById('callSmsDataSource').value = callSmsDataSource || 'all';
     document.getElementById('medianCallDurationSource').value = medianCallDurationSource || 'all_leads';
 
-    // TTE Settings
+    // --- Load TTE & Leads Reached Settings ---
     document.getElementById('tteSource').value = tteSource || 'standard';
-    document.getElementById('tteLeadType').value = tteLeadType;
-    document.getElementById('ttePercentileSelect').value = ttePValue;
-    if (!isProfilerMode) {
-        document.getElementById('tteLeadTypeContainer').style.display = (tteSource || 'standard') === 'standard' ? 'block' : 'none';
-    }
-
-    // Leads Reached Settings
-    document.getElementById('leadsReachedSource').value = leadsReachedSource || 'standard';
+    document.getElementById('tteLeadType').value = tteLeadType || 'total';
+    document.getElementById('ttePercentileSelect').value = ttePValue || 'p50';
+    document.getElementById('leadsReachedLeadType').value = leadsReachedLeadType || 'total';
     document.getElementById('leadsReachedLeadType').value = leadsReachedLeadType;
+    document.getElementById('tteSourceProfiler').value = tteSourceProfiler || 'standard';
+    document.getElementById('leadsReachedSourceProfiler').value = leadsReachedSourceProfiler || 'standard';
+    
+    // --- Logic to show/hide relevant dropdowns based on mode ---
     if (isProfilerMode) {
-        const tteSourceProfilerValue = document.getElementById('tteSourceProfiler').value;
-        document.getElementById('tteLeadTypeContainer').style.display = tteSourceProfilerValue === 'standard' ? 'block' : 'none';
-
-        const leadsReachedSourceProfilerValue = document.getElementById('leadsReachedSourceProfiler').value;
-        document.getElementById('leadsReachedLeadTypeContainer').style.display = leadsReachedSourceProfilerValue === 'standard' ? 'block' : 'none';
+        document.getElementById('tteLeadTypeContainer').style.display = (tteSourceProfiler || 'standard') === 'standard' ? 'block' : 'none';
+        document.getElementById('leadsReachedLeadTypeContainer').style.display = (leadsReachedSourceProfiler || 'standard') === 'standard' ? 'block' : 'none';
     } else {
         document.getElementById('tteLeadTypeContainer').style.display = (tteSource || 'standard') === 'standard' ? 'block' : 'none';
         document.getElementById('leadsReachedLeadTypeContainer').style.display = (leadsReachedSource || 'standard') === 'standard' ? 'block' : 'none';
     }
 
-    document.getElementById('tteSourceProfiler').value = tteSourceProfiler || 'standard';
-    document.getElementById('leadsReachedSourceProfiler').value = leadsReachedSourceProfiler || 'standard';
-
+    // --- Load "Per Lead Metrics" checkboxes ---
     const perLeadContainer = document.getElementById('perLeadMetricsContainer');
     const perLeadMetrics = settings.perLeadMetrics || {};
     const metricLabels = {
@@ -246,7 +330,6 @@ function loadSettingsToModal() {
         outbound_sms: 'Total SMS', unique_sms: 'Unique SMS', profiles_profiled: 'Profiles Profiled',
         profiles_completed: 'Profiles Completed', total_drug_tests: 'Drug Tests', onboarded: 'Onboarded'
     };
-
     perLeadContainer.innerHTML = Object.keys(metricLabels).map(key => `
         <label class="flex items-center space-x-3 p-1 rounded-md hover:bg-gray-700/50 cursor-pointer">
             <input type="checkbox" data-key="${key}" class="per-lead-checkbox h-4 w-4 rounded border-gray-500 bg-gray-600 text-blue-600 focus:ring-blue-500" ${perLeadMetrics[key] ? 'checked' : ''}>
@@ -254,16 +337,174 @@ function loadSettingsToModal() {
         </label>
     `).join('');
 
-    const exclusionContainer = document.getElementById('exclusionRulesContainer');
-    exclusionContainer.innerHTML = ''; // Clear previous content
-    const rulesUI = renderExclusionRules(exclusionRules || [], exclusionLogic || 'AND', true);
-    exclusionContainer.appendChild(rulesUI);
+    // --- KICK OFF THE NEW EXCLUSION RULE UI ---
+    currentlyEditingRuleSet = { type: 'default', id: null };
+    renderExclusionRuleManagerUI();
+}
+
+/**
+ * Renders the entire exclusion rule manager UI, including the list and the editor panel.
+ */
+function renderExclusionRuleManagerUI() {
+    const isProfilerMode = state.rankingsMode === 'profiler';
+    const settings = isProfilerMode ? state.rankingSettingsProfiler : state.rankingSettings;
+    const { exclusionRules } = settings;
+
+    const listContainer = document.getElementById('exclusionRuleSetList');
+    if (!listContainer) return;
+
+    // Render the list of rule sets on the left
+    let listHtml = `
+        <button class="rule-set-item w-full text-left p-3 font-semibold ${currentlyEditingRuleSet.type === 'default' ? 'bg-gray-700' : ''}" data-type="default">
+            Default Rules
+        </button>
+    `;
+    
+    exclusionRules.specific.forEach(rs => {
+        listHtml += `
+            <button class="rule-set-item w-full text-left p-3 ${currentlyEditingRuleSet.id === rs.id ? 'bg-gray-700' : ''}" data-type="specific" data-id="${rs.id}">
+                ${rs.name}
+                <span class="block text-xs text-gray-500">${rs.targets.length} target(s)</span>
+            </button>
+        `;
+    });
+    listContainer.innerHTML = listHtml;
+
+    // Find the rule set to edit and render the editor on the right
+    let ruleSetToEdit;
+    let isDefault = currentlyEditingRuleSet.type === 'default';
+
+    if (isDefault) {
+        ruleSetToEdit = exclusionRules.default;
+    } else {
+        ruleSetToEdit = exclusionRules.specific.find(rs => rs.id === currentlyEditingRuleSet.id);
+    }
+    
+    if (ruleSetToEdit) {
+        renderExclusionRuleEditor(ruleSetToEdit, isDefault);
+    } else {
+        // If the selected rule was deleted, fall back to default
+        currentlyEditingRuleSet = { type: 'default', id: null };
+        renderExclusionRuleEditor(exclusionRules.default, true);
+    }
+}
+
+/**
+ * Renders the right-hand panel editor for a specific rule set.
+ */
+function renderExclusionRuleEditor(ruleSet, isDefault) {
+    const editorPanel = document.getElementById('exclusionRuleEditorPanel');
+    if (!editorPanel) return;
+
+    const headerHtml = `
+        <div class="p-3 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
+            ${isDefault ? `
+                <h3 class="font-semibold text-lg text-white">Editing Default Rules</h3>
+            ` : `
+                <input type="text" class="modal-input bg-transparent border-transparent text-lg font-semibold specific-rule-name-input" value="${ruleSet.name}">
+                <button class="remove-specific-rule-btn icon-btn hover:bg-red-500/20 text-gray-500 hover:text-red-400" title="Delete this rule set">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `}
+        </div>
+    `;
+
+    const tabsHtml = `
+        <div class="flex border-b border-gray-700 px-3">
+            <button class="editor-tab-btn active" data-tab="rules">Rules</button>
+            ${!isDefault ? `<button class="editor-tab-btn" data-tab="targets">Applied To</button>` : ''}
+        </div>
+    `;
+
+    const rulesContentHtml = `
+        <div id="editor-tab-content-rules" class="editor-tab-content flex-grow p-4 overflow-y-auto">
+            <div class="exclusion-rule-set">
+                </div>
+        </div>
+    `;
+
+    const targetsContentHtml = isDefault ? '' : `
+        <div id="editor-tab-content-targets" class="editor-tab-content hidden flex-grow p-4 overflow-y-auto space-y-3">
+            <div class="flex gap-2">
+                <select id="newTargetCompany" class="modal-select flex-1"></select>
+                <select id="newTargetContract" class="modal-select flex-1"></select>
+                <button id="addTargetBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-md text-sm">Add</button>
+            </div>
+            <div id="targetsList" class="space-y-2">
+                </div>
+        </div>
+    `;
+
+    editorPanel.innerHTML = `
+        ${headerHtml}
+        ${tabsHtml}
+        <div class="flex-grow overflow-hidden flex flex-col">
+            ${rulesContentHtml}
+            ${targetsContentHtml}
+        </div>
+    `;
+
+    // Populate the rule editor
+    const ruleEditorContainer = editorPanel.querySelector('.exclusion-rule-set');
+    ruleEditorContainer.appendChild(renderExclusionRules(ruleSet.rules || [], ruleSet.logic || 'AND'));
+    
+    // Populate targets if it's a specific rule
+    if (!isDefault) {
+        populateFilters(document.getElementById('newTargetCompany'), state.combinedDataForRankings, 'company_name', 'Select Company');
+        populateFilters(document.getElementById('newTargetContract'), state.combinedDataForRankings, 'contract_type', 'Select Contract');
+        
+        const targetsList = document.getElementById('targetsList');
+        targetsList.innerHTML = ruleSet.targets.map(t => `
+            <div class="target-tag flex items-center justify-between bg-gray-700 p-2 rounded-md" data-company="${t.company}" data-contract="${t.contract}">
+                <span><strong>${t.company}</strong> - ${t.contract}</span>
+                <button class="remove-target-btn text-gray-500 hover:text-red-400">&times;</button>
+            </div>
+        `).join('');
+    }
+}
+
+
+// js/rankingsView.js
+
+// ADD THIS NEW HELPER FUNCTION
+function parseExclusionRuleSet(container) {
+    if (!container) return { logic: 'AND', rules: [] };
+
+    const parseGroup = (groupElement) => {
+        const rules = [];
+        const content = groupElement.querySelector('.exclusion-group-content, .exclusion-top-level-content');
+        if (content) {
+            Array.from(content.children).forEach(child => {
+                if (child.classList.contains('exclusion-rule-item')) {
+                    const metric = child.querySelector('.exclusion-metric').value;
+                    const valueEl = child.querySelector('.exclusion-value');
+                    const operatorEl = child.querySelector('.exclusion-operator');
+                    if (['team', 'recruiter', 'profiler'].includes(metric)) {
+                        rules.push({ metric, value: valueEl.value });
+                    } else {
+                        rules.push({ metric, operator: operatorEl.value, value: Number(valueEl.value) });
+                    }
+                } else if (child.classList.contains('exclusion-rule-group')) {
+                    rules.push(parseGroup(child));
+                }
+            });
+        }
+        const logic = groupElement.querySelector('.exclusion-group-logic .active')?.dataset.logic || 'AND';
+        return { type: 'group', logic, rules };
+    };
+    
+    const topLevelElement = container.children[0];
+    if (!topLevelElement) return { logic: 'AND', rules: [] };
+    
+    const parsedData = parseGroup(topLevelElement);
+    return { logic: parsedData.logic, rules: parsedData.rules };
 }
 
 function saveRankingsSettings() {
     const isProfilerMode = state.rankingsMode === 'profiler';
     const settingsToUpdate = isProfilerMode ? state.rankingSettingsProfiler : state.rankingSettings;
 
+    // Part 1: Save settings from "Active Day Rules" and "Secondary Filters" tabs
     settingsToUpdate.activeDayRules.workdays.conditionsToMeet = parseInt(document.getElementById('workday_activeDayConditions').value, 10);
     settingsToUpdate.activeDayRules.workdays.calls = parseInt(document.getElementById('workday_minCalls').value, 10);
     settingsToUpdate.activeDayRules.workdays.duration = parseInt(document.getElementById('workday_minDuration').value, 10);
@@ -292,36 +533,23 @@ function saveRankingsSettings() {
     document.querySelectorAll('.per-lead-checkbox').forEach(checkbox => {
         settingsToUpdate.perLeadMetrics[checkbox.dataset.key] = checkbox.checked;
     });
-
-    const parseGroup = (groupElement) => {
-        const rules = [];
-        const content = groupElement.querySelector('.exclusion-group-content, .exclusion-top-level-content');
-        if (content) {
-            Array.from(content.children).forEach(child => {
-                if (child.classList.contains('exclusion-rule-item')) {
-                    const metric = child.querySelector('.exclusion-metric').value;
-                    const valueEl = child.querySelector('.exclusion-value');
-                    const operatorEl = child.querySelector('.exclusion-operator');
-                    if (['team', 'recruiter', 'profiler'].includes(metric)) {
-                        rules.push({ metric, value: valueEl.value });
-                    } else {
-                        rules.push({ metric, operator: operatorEl.value, value: Number(valueEl.value) });
-                    }
-                } else if (child.classList.contains('exclusion-rule-group')) {
-                    rules.push(parseGroup(child));
-                }
-            });
-        }
-        const logic = groupElement.querySelector('.exclusion-group-logic .active').dataset.logic;
-        return { type: 'group', logic, rules };
-    };
     
-    const topLevelElement = document.getElementById('exclusionRulesContainer').children[0];
-    const parsedData = parseGroup(topLevelElement);
-
-    settingsToUpdate.exclusionRules = parsedData.rules;
-    settingsToUpdate.exclusionLogic = parsedData.logic;
-
+    // Part 2: Save settings from the new "Exclusion Rules" UI
+    const editorContainer = document.querySelector('#exclusionRuleEditorPanel .exclusion-rule-set');
+    if (editorContainer) {
+        const currentlyDisplayedRules = parseExclusionRuleSet(editorContainer);
+        if (currentlyEditingRuleSet.type === 'default') {
+            settingsToUpdate.exclusionRules.default = currentlyDisplayedRules;
+        } else {
+            const specificRule = settingsToUpdate.exclusionRules.specific.find(rs => rs.id === currentlyEditingRuleSet.id);
+            if (specificRule) {
+                specificRule.rules = currentlyDisplayedRules.rules;
+                specificRule.logic = currentlyDisplayedRules.logic;
+            }
+        }
+    }
+    
+    // Part 3: Finalize, save to local storage, and close
     const storageKey = isProfilerMode ? 'rankingSettingsProfiler' : 'rankingSettings';
     localStorage.setItem(storageKey, JSON.stringify(settingsToUpdate));
 
@@ -734,36 +962,46 @@ const getSelectedValues = (dropdownEl) => {
 export function initializeRankingsView() {
     if (isInitialized) return;
 
-    // --- FIX: Remove conflicting sticky classes from the <thead> element ---
     const tableHeader = document.getElementById('rankingsTableHeader');
     if (tableHeader) {
         tableHeader.classList.remove('sticky', 'top-0', 'z-10');
     }
-    // --- END OF FIX ---
 
-    const savedSettings = localStorage.getItem('rankingSettings');
-    if (savedSettings && savedSettings !== 'undefined') {
-        try {
-            state.rankingSettings = { ...state.rankingSettings, ...JSON.parse(savedSettings) };
-        } catch (e) {
-            console.error("Failed to parse rankingSettings from localStorage.", e);
-            localStorage.setItem('rankingSettings', JSON.stringify(state.rankingSettings));
-        }
-    } else {
-        localStorage.setItem('rankingSettings', JSON.stringify(state.rankingSettings));
-    }
+    // MODIFICATION START: Add data migration logic for settings
+    const migrateAndLoadSettings = (storageKey, defaultStateKey) => {
+        const savedData = localStorage.getItem(storageKey);
+        if (savedData && savedData !== 'undefined') {
+            try {
+                let parsedSettings = JSON.parse(savedData);
 
-    const savedProfilerSettings = localStorage.getItem('rankingSettingsProfiler');
-    if (savedProfilerSettings && savedProfilerSettings !== 'undefined') {
-        try {
-            state.rankingSettingsProfiler = { ...state.rankingSettingsProfiler, ...JSON.parse(savedProfilerSettings) };
-        } catch (e) {
-            console.error("Failed to parse rankingSettingsProfiler from localStorage.", e);
-            localStorage.setItem('rankingSettingsProfiler', JSON.stringify(state.rankingSettingsProfiler));
+                // Check if the loaded exclusionRules is an array (the old format)
+                if (Array.isArray(parsedSettings.exclusionRules)) {
+                    console.log(`Migrating old exclusion rules for ${storageKey}...`);
+                    const oldRules = parsedSettings.exclusionRules;
+                    const oldLogic = parsedSettings.exclusionLogic || 'AND';
+                    
+                    // Convert to the new object structure
+                    parsedSettings.exclusionRules = {
+                        default: { logic: oldLogic, rules: oldRules },
+                        specific: []
+                    };
+                    delete parsedSettings.exclusionLogic; // Clean up old property
+                }
+                
+                state[defaultStateKey] = { ...state[defaultStateKey], ...parsedSettings };
+
+            } catch (e) {
+                console.error(`Failed to parse ${storageKey} from localStorage. Resetting.`, e);
+                localStorage.setItem(storageKey, JSON.stringify(state[defaultStateKey]));
+            }
+        } else {
+            localStorage.setItem(storageKey, JSON.stringify(state[defaultStateKey]));
         }
-    } else {
-        localStorage.setItem('rankingSettingsProfiler', JSON.stringify(state.rankingSettingsProfiler));
-    }
+    };
+
+    migrateAndLoadSettings('rankingSettings', 'rankingSettings');
+    migrateAndLoadSettings('rankingSettingsProfiler', 'rankingSettingsProfiler');
+    // MODIFICATION END
 
     const savedRecruiterWeights = localStorage.getItem('rankingWeights');
     if (savedRecruiterWeights && savedRecruiterWeights !== 'undefined') {
@@ -1025,24 +1263,42 @@ function calculateActiveDays(dailyData, rules) {
     return activeDaysByRecruiter;
 }
 
-function applyExclusionRules(aggregatedData, settings) {
-    const { exclusionRules, exclusionLogic } = settings;
+function applyExclusionRules(aggregatedData, settings, selectedCompanies, selectedContracts) {
+    const { exclusionRules } = settings;
+    if (!exclusionRules) return aggregatedData;
 
-    if (!exclusionRules || exclusionRules.length === 0) {
-        return aggregatedData;
+    let applicableRuleSet = exclusionRules.default; // Start by assuming we'll use the default rules
+
+    // This is the new logic:
+    // Check if the user has selected exactly one company and one contract.
+    if (selectedCompanies.length === 1 && selectedContracts.length === 1) {
+        const company = selectedCompanies[0];
+        const contract = selectedContracts[0];
+        
+        // Search for a specific rule set where the target matches the user's selection.
+        const specificRuleSet = exclusionRules.specific?.find(rs => 
+            rs.targets.some(target => target.company === company && target.contract === contract)
+        );
+        
+        // If a matching specific rule is found, override the default one.
+        if (specificRuleSet) {
+            applicableRuleSet = specificRuleSet;
+            console.log(`Applying specific exclusion rule set: "${specificRuleSet.name}" for ${company} - ${contract}`);
+        }
     }
 
+    // If no applicable rules exist at all, return the data as is.
+    if (!applicableRuleSet || !applicableRuleSet.rules || applicableRuleSet.rules.length === 0) {
+        return aggregatedData;
+    }
+    
+    // The evaluation logic from here remains the same.
     const evaluateRule = (entity, rule) => {
-        const totalLeads = (entity.new_leads_assigned_on_date || 0) + (entity.old_leads_assigned_on_date || 0);
         if (rule.type === 'group') {
             const groupResults = rule.rules.map(innerRule => evaluateRule(entity, innerRule));
-            if (rule.logic === 'AND') {
-                return groupResults.every(res => res);
-            } else {
-                return groupResults.some(res => res);
-            }
+            return rule.logic === 'AND' ? groupResults.every(res => res) : groupResults.some(res => res);
         } else {
-            // Individual rule evaluation
+            const totalLeads = (entity.new_leads_assigned_on_date || 0) + (entity.old_leads_assigned_on_date || 0);
             if (rule.metric === 'team') return entity.team === rule.value;
             if (rule.metric === 'recruiter' || rule.metric === 'profiler') return entity.name === rule.value;
             
@@ -1058,7 +1314,7 @@ function applyExclusionRules(aggregatedData, settings) {
     };
 
     return aggregatedData.filter(entity => {
-        const mainGroup = { type: 'group', logic: exclusionLogic, rules: exclusionRules };
+        const mainGroup = { type: 'group', logic: applicableRuleSet.logic, rules: applicableRuleSet.rules };
         return !evaluateRule(entity, mainGroup);
     });
 }
@@ -1106,6 +1362,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
             tte_values: [], daily_leads_reached: [], num_recruiters: 0,
             new_leads_assigned_on_date: 0, old_leads_assigned_on_date: 0,
             hot_leads_assigned: 0,
+            recycled_leads: 0,
             fresh_leads_assigned_on_date: 0,
             profiles_profiled: 0, profiles_completed: 0,
             total_past_due: 0, total_contacted: 0, total_not_due_yet: 0,
@@ -1193,6 +1450,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
             
             entry.new_leads_assigned_on_date += Number(row.new_leads_assigned_on_date) || 0;
             entry.old_leads_assigned_on_date += Number(row.old_leads_assigned_on_date) || 0;
+            entry.recycled_leads += Number(row.recycled_leads) || 0;
             entry.hot_leads_assigned += (Number(row.new_hot_leads_assigned_on_date) || 0) + (Number(row.old_hot_leads_assigned_on_date) || 0);
             entry.fresh_leads_assigned_on_date += Number(row.fresh_leads_assigned_on_date) || 0;
             
@@ -1270,7 +1528,11 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
         });
     }
 
-    let rankedData = applyExclusionRules(aggregatedData, settings);
+   // MODIFICATION: Pass company and contract context to the exclusion rules
+    // For now, we assume a single context. This will need enhancement if multiple contexts are processed at once.
+  // MODIFICATION START: Pass the entire filter selection to applyExclusionRules
+  let rankedData = applyExclusionRules(aggregatedData, settings, selectedCompanies, selectedContracts);
+  // MODIFICATION END
 
     rankedData.forEach(entry => {
         const relevantTTEValues = entry.tte_values.filter(v => v !== null);
@@ -3071,7 +3333,7 @@ function initializeRankingsImageModal() {
     // MODIFIED: Added a more specific event listener
     if (settingsContainer) {
         settingsContainer.addEventListener('change', (e) => {
-            if (e.target.matches('.image-col-checkbox, #rankingsImageRowCount')) {
+            if (e.target.matches('.image-col-checkbox, #rankingsImageRowCount, #imageReportContractSelect')) {
                 // Save checkbox state when it changes
                 const uncheckedKeys = Array.from(settingsContainer.querySelectorAll('.image-col-checkbox:not(:checked)'))
                     .map(cb => cb.dataset.key);
@@ -3089,59 +3351,76 @@ function openRankingsImageModal() {
     if (!settingsContainer) return;
 
     const headerConfig = getRankingsHeaderConfig();
-    const allColumnsInOrder = getRankingsColumnsInOrder();
-    allColumnsInOrder.push('delegation_percent'); // <-- ADD THIS LINE
-
+    const mode = state.rankingsMode;
+    
+    // --- START: NEW LOGIC to add Company Delegation columns ---
     const columnLabels = {};
     headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
     Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
-    columnLabels['delegation_percent'] = 'Delegation %'; // <-- ADD THIS LINE
-   allColumnsInOrder.forEach(key => {
-        if (key.includes('_percentile')) {
-            let baseKey = key.replace('_percentile', '');
-            // This handles the special case where the value key is 'tte_value'
-            if (baseKey === 'tte') {
-                baseKey = 'tte_value';
-            }
-            columnLabels[key] = `${headerConfig.columnDetails[baseKey]?.label} %`;
-        }
+    columnLabels['delegation_percent'] = 'Delegation %';
+    columnLabels['recycled_leads'] = mode === 'profiler' ? 'TOTAL LEADS' : 'RECYCLED';
+
+    const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
+    const companyDelegationKeys = [];
+    allCompanies.forEach(company => {
+        const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
+        companyDelegationKeys.push(key);
+        columnLabels[key] = `${company.split(' ')[0]} Del %`; 
     });
+    // --- END: NEW LOGIC ---
+
+    const allColumnsForModal = getRankingsColumnsInOrder();
+    allColumnsForModal.push('delegation_percent', 'recycled_leads', ...companyDelegationKeys);
 
     const groups = {
-        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score', 'delegation_percent'],
+        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'recycled_leads', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score', 'delegation_percent', ...companyDelegationKeys],
         "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
         "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
         "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'median_call_duration', 'median_call_duration_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
         "Arrivals Metrics": ['total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile']
     };
 
-    // --- NEW: HTML for the row count selector ---
-  const displayOptionsHtml = `
-        <div>
-            <h4>Display Options</h4>
-            <div class="space-y-1 mt-2">
-                <label class="flex items-center justify-between p-1">
-                    <span class="text-sm text-gray-300">Number of Rows</span>
-                    <select id="rankingsImageRowCount" class="modal-select w-24 !py-1">
-                        <option value="5">Top 5</option>
-                        <option value="10">Top 10</option>
-                        <option value="20">Top 20</option>
-                        <option value="all" selected>All</option>
-                    </select>
-                </label>
-            </div>
+    const displayOptionsHtml = `
+    <div>
+        <h4>Display Options</h4>
+        <div class="space-y-1 mt-2">
+            <label class="flex items-center justify-between p-1">
+                <span class="text-sm text-gray-300">Number of Rows</span>
+                <select id="rankingsImageRowCount" class="modal-select w-24 !py-1">
+                    <option value="5">Top 5</option>
+                    <option value="10">Top 10</option>
+                    <option value="20">Top 20</option>
+                    <option value="all" selected>All</option> 
+                </select>
+            </label>
         </div>
-    `;
+    </div>
+`;
 
     let settingsHtml = displayOptionsHtml;
+    const defaultVisibleMetrics = [
+        'rank',
+        'name',
+        'recycled_leads',
+        'hot_leads_assigned',
+        'final_score',
+        'delegation_amongus',
+        'delegation_eb_infinity',
+        'delegation_smj',
+        'profiles_completed',
+        'total_drug_tests',
+        'onboarded'
+    ];
     for (const groupName in groups) {
-        const availableKeys = groups[groupName].filter(key => allColumnsInOrder.includes(key));
+        const availableKeys = groups[groupName].filter(key => allColumnsForModal.includes(key));
         if (availableKeys.length > 0) {
             settingsHtml += `<div><h4>${groupName}</h4><div class="space-y-1 mt-2">`;
             availableKeys.forEach(key => {
+                // --- MODIFY THIS LINE ---
+                const isCheckedByDefault = defaultVisibleMetrics.includes(key);
                 settingsHtml += `
                     <label class="flex items-center space-x-3 p-1 rounded-md hover:bg-gray-700/50 cursor-pointer">
-                        <input type="checkbox" data-key="${key}" class="image-col-checkbox h-4 w-4 rounded" checked>
+                        <input type="checkbox" data-key="${key}" class="image-col-checkbox h-4 w-4 rounded" ${isCheckedByDefault ? 'checked' : ''}>
                         <span class="text-sm text-gray-300">${columnLabels[key] || key}</span>
                     </label>
                 `;
@@ -3152,7 +3431,6 @@ function openRankingsImageModal() {
 
     settingsContainer.innerHTML = settingsHtml;
 
-    // --- MODIFICATION START: Load and apply saved settings ---
     const savedUnchecked = JSON.parse(localStorage.getItem('rankingsImageUncheckedColumns'));
     if (savedUnchecked && Array.isArray(savedUnchecked)) {
         settingsContainer.querySelectorAll('.image-col-checkbox').forEach(cb => {
@@ -3161,7 +3439,6 @@ function openRankingsImageModal() {
             }
         });
     }
-    // --- MODIFICATION END ---
     
     renderRankingsImagePreview();
     document.getElementById('rankingsImageModal').classList.remove('hidden');
@@ -3173,12 +3450,114 @@ function renderRankingsImagePreview() {
     if (!previewContainer) return;
 
     const selectedKeys = Array.from(document.querySelectorAll('.image-col-checkbox:checked')).map(cb => cb.dataset.key);
+    const rowCountValue = document.getElementById('rankingsImageRowCount')?.value || '10';
     
-    const rowCountEl = document.getElementById('rankingsImageRowCount');
-    const rowCountValue = rowCountEl ? rowCountEl.value : '10';
-    const data = rowCountValue === 'all' 
-        ? state.rankedData 
-        : state.rankedData.slice(0, parseInt(rowCountValue, 10));
+    let dataToRender = [...state.rankedData].map(row => ({...row}));
+
+    // --- START: MODIFIED LOGIC TO DETECT GROUPS ---
+    const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
+    const savedDelegationSettings = JSON.parse(localStorage.getItem('delegationSettings')) || { contracts: [], groups: [] };
+
+    let matchedItem = null;
+    let itemIsGroup = false;
+
+    if (selectedContracts.length === 1 && selectedContracts[0].toUpperCase() !== 'ALL') {
+        // Case 1: A single contract is selected
+        matchedItem = savedDelegationSettings.contracts.find(c => c.name === selectedContracts[0]);
+    } else if (selectedContracts.length > 1) {
+        // Case 2: Multiple contracts are selected, check if they match a group
+        const selectedSet = new Set(selectedContracts.sort());
+        const contractIdToNameMap = new Map(savedDelegationSettings.contracts.map(c => [c.id, c.name]));
+        
+        const foundGroup = savedDelegationSettings.groups.find(group => {
+            const groupContractNames = group.contractIds.map(id => contractIdToNameMap.get(id)).sort();
+            const groupSet = new Set(groupContractNames);
+            
+            if (selectedSet.size !== groupSet.size) return false;
+            for (const name of selectedSet) {
+                if (!groupSet.has(name)) return false;
+            }
+            return true;
+        });
+
+        if (foundGroup) {
+            matchedItem = foundGroup;
+            itemIsGroup = true;
+        }
+    }
+
+    if (matchedItem) {
+        const contractNames = itemIsGroup 
+            ? matchedItem.contractIds.map(id => savedDelegationSettings.contracts.find(c => c.id === id)?.name).filter(Boolean)
+            : [matchedItem.name];
+
+        const fromDateStr = document.getElementById('rankingsDateFromFilter').value;
+        const toDateStr = document.getElementById('rankingsDateToFilter').value;
+        const fromDate = fromDateStr ? new Date(fromDateStr) : null;
+        const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
+
+        const matchesDateAndMode = (row) => {
+            const rowDate = row.date ? new Date(row.date) : null;
+            if (!rowDate || !fromDate || !toDate || rowDate < fromDate || rowDate > toDate) return false;
+            const teamName = row.team_name || row.team;
+            if (state.rankingsMode === 'profiler') return teamName === 'Profilers';
+            return teamName !== 'Profilers';
+        };
+
+        const standardFilter = (row) => {
+            if (!matchesDateAndMode(row)) return false;
+            return row.company_name === 'ALL' && contractNames.includes(row.contract_type);
+        };
+        
+        const arrivalsFilter = (row) => {
+            if (!matchesDateAndMode(row)) return false;
+            return contractNames.includes(row.contract_type);
+        };
+
+        const filteredLeadRiskData = state.allData.filter(standardFilter);
+        const filteredMvrPspCdlData = state.mvrPspCdlData.filter(standardFilter);
+        const filteredPastDueData = state.recruiterData.filter(matchesDateAndMode);
+        const filteredProfilerData = state.profilerData.filter(matchesDateAndMode);
+        const filteredArrivalsData = state.arrivalsData.filter(arrivalsFilter);
+        const filteredDrugTestsData = state.drugTestsData.filter(arrivalsFilter);
+
+        const combinedDataForContract = [
+            ...filteredLeadRiskData, ...filteredMvrPspCdlData, ...filteredPastDueData,
+            ...filteredProfilerData, ...filteredArrivalsData, ...filteredDrugTestsData
+        ];
+
+        const contractSpecificRankedData = calculateRankings(combinedDataForContract, state.rankingsMode, ['ALL'], contractNames);
+        const contractRankMap = new Map(contractSpecificRankedData.map(entity => [entity.name, entity.final_score]));
+        
+        const savedActivationMatrix = JSON.parse(localStorage.getItem('delegationActivation')) || {};
+        
+        if (matchedItem) {
+            const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
+            const activationTeams = [...new Set(state.allData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))].sort().map((t, i) => ({ id: `t${i}`, name: t }));
+            const activationProfilers = [...new Set(state.allData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))].sort().map((p, i) => ({ id: `p${i}`, name: p }));
+
+            dataToRender.forEach(entityRow => {
+                allCompanies.forEach(company => {
+                    const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
+                    const companyMatrix = savedActivationMatrix[company] || {};
+                    const entityList = state.rankingsMode === 'team' ? activationTeams : activationProfilers;
+                    const entityObj = entityList.find(p => p.name === entityRow.name);
+                    
+                    if (entityObj && companyMatrix[`${entityObj.id}_${matchedItem.id}`] !== false) {
+                        const activeEntitiesInMatrix = entityList.filter(ent => companyMatrix[`${ent.id}_${matchedItem.id}`] !== false);
+                        const totalScore = activeEntitiesInMatrix.reduce((sum, ent) => sum + (contractRankMap.get(ent.name) || 0), 0);
+                        const entityScore = contractRankMap.get(entityRow.name) || 0;
+                        entityRow[key] = totalScore > 0 ? (entityScore / totalScore) * 100 : 0;
+                    } else {
+                        entityRow[key] = '—';
+                    }
+                });
+            });
+        }
+    }
+    // --- END: MODIFIED LOGIC ---
+
+    const data = rowCountValue === 'all' ? dataToRender : dataToRender.slice(0, parseInt(rowCountValue, 10));
 
     if (data.length === 0) {
         previewContainer.innerHTML = `<p class="preview-subtitle">No data available for the current filters.</p>`;
@@ -3186,28 +3565,32 @@ function renderRankingsImagePreview() {
     }
 
     const headerConfig = getRankingsHeaderConfig();
-    const getLabel = (key) => {
-        if (key === 'delegation_percent') return 'DELEGATION %';
-        if (key.includes('_percentile')) {
-            const baseKey = key.replace('_percentile', '');
-            return `% ${headerConfig.columnDetails[baseKey]?.label}`;
-        }
-        return headerConfig.columnDetails[key]?.label || headerConfig.base.find(c => c.key === key)?.label || key;
-    };
+    const mode = state.rankingsMode;
+    const columnLabels = {};
+    headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
+    Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
+    columnLabels['delegation_percent'] = 'Delegation %';
+    columnLabels['recycled_leads'] = mode === 'profiler' ? 'TOTAL LEADS' : 'RECYCLED';
+    const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
+    allCompanies.forEach(company => {
+        const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
+        columnLabels[key] = `${company.split(' ')[0]} Del %`;
+    });
 
-    // --- Header Generation ---
-    const headerHtml = `<thead><tr>${selectedKeys.map(key => `<th>${getLabel(key)}</th>`).join('')}</tr></thead>`;
+    const getLabel = (key) => (columnLabels[key] || key).toUpperCase();
 
-    // --- Body Generation (Updated with trophy logic) ---
+    const headerHtml = `<thead><tr>${selectedKeys.map(key => {
+        const headerClass = key.startsWith('delegation_') ? `class="${key.replace(/_/g, '-')}-cell"` : '';
+        return `<th ${headerClass}>${getLabel(key)}</th>`;
+    }).join('')}</tr></thead>`;
+
     const bodyHtml = `<tbody>${data.map(row => {
-        const cells = selectedKeys.map(key => {
+        return `<tr>${selectedKeys.map(key => {
             let value = row[key];
             let cellClass = '';
             
-            // Add trophy icons for ranks 1, 2, 3
             if (key === 'rank') {
                 let trophyHtml = '';
-                // --- THIS IS THE FIX: Added the 'fas' class ---
                 if (row.rank === 1) trophyHtml = '<i class="fas fa-trophy trophy-icon trophy-gold"></i>';
                 if (row.rank === 2) trophyHtml = '<i class="fas fa-trophy trophy-icon trophy-silver"></i>';
                 if (row.rank === 3) trophyHtml = '<i class="fas fa-trophy trophy-icon trophy-bronze"></i>';
@@ -3216,41 +3599,32 @@ function renderRankingsImagePreview() {
             
             if (['name', 'team'].includes(key)) cellClass = 'text-cell';
             if (key === 'rank') cellClass = 'rank-cell';
-            if (key.includes('_score')) cellClass = `${key.replace(/_/g, '-')}-cell score-cell`;
-            if (key === 'delegation_percent') cellClass += ' final-score-cell';
+            if (key.includes('_score') || key.startsWith('delegation_')) cellClass = `${key.replace(/_/g, '-')}-cell score-cell`;
+            
             if (key.includes('percentile')) cellClass = 'percentile-cell';
 
-            if (typeof row[key] === 'number') {
-                if (key.includes('percentile') || key.includes('_score') || ['leads_reached', 'past_due_ratio', 'delegation_percent'].includes(key)) {
-                    value = `${row[key].toFixed(1)}%`;
+            if (typeof value === 'number') {
+                if (key.includes('percentile') || key.includes('_score') || key.startsWith('delegation_')) {
+                    value = `${value.toFixed(1)}%`;
                 } else if (['tte_value', 'median_time_to_profile', 'median_call_duration', 'call_duration_seconds'].includes(key)) {
-                    value = formatDuration(row[key]);
+                    value = formatDuration(value);
                 } else {
-                    value = Math.round(row[key]);
+                    value = Math.round(value);
                 }
             }
             return `<td class="${cellClass}">${value ?? 'N/A'}</td>`;
-        }).join('');
-        return `<tr>${cells}</tr>`;
+        }).join('')}</tr>`;
     }).join('')}</tbody>`;
 
     const dateFrom = document.getElementById('rankingsDateFromFilter').value;
     const dateTo = document.getElementById('rankingsDateToFilter').value;
     const modeText = state.rankingsMode.charAt(0).toUpperCase() + state.rankingsMode.slice(1);
 
-    // Get selected contracts and filter out 'ALL'
-    const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
-    const specificContracts = selectedContracts.filter(c => c.toUpperCase() !== 'ALL');
-
-    let contractText = '';
-    // If there are specific contracts selected, format them for the title
-    if (specificContracts.length > 0) {
-        contractText = ` (${specificContracts.join(', ')})`;
-    }
+    const titleSuffix = matchedItem ? ` for ${matchedItem.name}` : ` (${selectedContracts.join(', ')})`;
 
     const titleText = rowCountValue === 'all' 
-        ? `${modeText} Rankings${contractText}` 
-        : `Top ${rowCountValue} ${modeText} Rankings${contractText}`;
+        ? `${modeText} Rankings${titleSuffix}` 
+        : `Top ${rowCountValue} ${modeText} Rankings${titleSuffix}`;
 
     previewContainer.innerHTML = `
         <div class="preview-header">
