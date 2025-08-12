@@ -107,8 +107,13 @@ export const state = {
             outbound_sms: false, unique_sms: false, profiles_profiled: false,
             profiles_completed: false, total_drug_tests: false, onboarded: false
         },
-        exclusionRules: [ { metric: 'active_days', operator: '>=', value: 1 } ],
-        exclusionLogic: 'AND'
+        exclusionRules: {
+            default: {
+              logic: 'AND',
+              rules: [ { metric: 'active_days', operator: '>=', value: 1 } ]
+            },
+            specific: []
+          }
     },
     // Settings for Profiler
     rankingSettingsProfiler: {
@@ -131,8 +136,13 @@ export const state = {
             outbound_sms: false, unique_sms: false, profiles_profiled: false,
             profiles_completed: false, total_drug_tests: false, onboarded: false
         },
-        exclusionRules: [ { metric: 'active_days', operator: '>=', value: 1 } ],
-        exclusionLogic: 'AND'
+        exclusionRules: {
+            default: {
+              logic: 'AND',
+              rules: [ { metric: 'active_days', operator: '>=', value: 1 } ]
+            },
+            specific: []
+          }
     },
     // --- END: SEPARATE RANKING SETTINGS ---
 
