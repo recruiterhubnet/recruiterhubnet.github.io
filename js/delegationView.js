@@ -297,15 +297,18 @@ function sortDelegationData(data) {
 
 function getContractsActiveInMatrix(companyName, entityType) {
     const entities = entityType === 'team' ? state.activation.teams : state.activation.profilers;
-    const allContracts = state.settings.contracts;
-    const allGroups = state.settings.groups;
     const companyMatrix = state.activation.matrix[companyName] || {};
+
+    // --- FIX START: Filter by visibility first ---
+    // 1. Get only the contracts and groups that are toggled ON in the settings.
+    const visibleContracts = state.settings.contracts.filter(c => state.settings.visibility[c.id] && c.name.toUpperCase() !== 'ALL');
+    const visibleGroups = state.settings.groups.filter(g => state.settings.visibility[g.id]);
+    // --- FIX END ---
 
     const activeItems = [];
     
-    // Check all contracts
-    allContracts.forEach(contract => {
-        if (contract.name.toUpperCase() === 'ALL') return; // Skip the 'ALL' contract
+    // 2. From that smaller list of VISIBLE contracts, check which ones are active in the matrix.
+    visibleContracts.forEach(contract => {
         const hasActiveEntity = entities.some(entity => {
             const matrixKey = `${entity.id}_${contract.id}`;
             return companyMatrix[matrixKey] === true;
@@ -315,8 +318,8 @@ function getContractsActiveInMatrix(companyName, entityType) {
         }
     });
 
-    // Check all groups
-    allGroups.forEach(group => {
+    // 3. From that smaller list of VISIBLE groups, check which ones are active in the matrix.
+    visibleGroups.forEach(group => {
         const hasActiveEntity = entities.some(entity => {
             const matrixKey = `${entity.id}_${group.id}`;
             return companyMatrix[matrixKey] === true;
