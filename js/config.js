@@ -1,6 +1,6 @@
 // js/config.js
 
-export const leadRiskAppScriptUrl = 'https://script.google.com/macros/s/AKfycbz-F5kugsn442j5av_koKcvJdGIVsCgTLjSSdgn8BlkIdpqYYjoJ_UPfJyHhKSshdhI/exec';
+export const leadRiskAppScriptUrl = 'https://script.google.com/macros/s/AKfycbw59i_bzWwln4Cm2SEF-AzMhZAiJ0Qop7gI9Da9BrWO-M2EvROYbLptl8uZwDQVWqxW/exec';
 export const workingHoursAppScriptUrl = 'https://script.google.com/macros/s/AKfycbz2EvNYMZ73BtO_nQjiteWOkOTtAQ0JIyTqYZr8XakJKYNGzA6-YFxuf2U5UDwhWqXM/exec';
 //This is the new URL for arrivals data
 export const arrivalsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbw147EXh-INU9M8-bPx19zYFGtfqGH7obQt1umbtlvh_4Obu0LWTs-wRZVM1Vq57_Zh/exec'; 
