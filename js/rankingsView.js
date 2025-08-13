@@ -3454,7 +3454,6 @@ function renderRankingsImagePreview() {
     
     let dataToRender = [...state.rankedData].map(row => ({...row}));
 
-    // --- START: MODIFIED LOGIC TO DETECT GROUPS ---
     const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
     const savedDelegationSettings = JSON.parse(localStorage.getItem('delegationSettings')) || { contracts: [], groups: [] };
 
@@ -3462,10 +3461,8 @@ function renderRankingsImagePreview() {
     let itemIsGroup = false;
 
     if (selectedContracts.length === 1 && selectedContracts[0].toUpperCase() !== 'ALL') {
-        // Case 1: A single contract is selected
         matchedItem = savedDelegationSettings.contracts.find(c => c.name === selectedContracts[0]);
     } else if (selectedContracts.length > 1) {
-        // Case 2: Multiple contracts are selected, check if they match a group
         const selectedSet = new Set(selectedContracts.sort());
         const contractIdToNameMap = new Map(savedDelegationSettings.contracts.map(c => [c.id, c.name]));
         
@@ -3533,8 +3530,20 @@ function renderRankingsImagePreview() {
         
         if (matchedItem) {
             const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
-            const activationTeams = [...new Set(state.allData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))].sort().map((t, i) => ({ id: `t${i}`, name: t }));
-            const activationProfilers = [...new Set(state.allData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))].sort().map((p, i) => ({ id: `p${i}`, name: p }));
+            
+            // --- START: THIS IS THE BLOCK TO REPLACE ---
+            // Use the exact same logic as delegationView.js to ensure entity IDs match.
+            // 1. Use the same combined data source.
+            const combinedData = [...state.allData, ...state.drugTestsData];
+            
+            // 2. Get unique names WITHOUT sorting them before assigning IDs.
+            const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
+            const allProfilers = [...new Set(combinedData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
+            
+            // 3. Map to objects with consistent IDs.
+            const activationTeams = allTeams.map((t, i) => ({ id: `t${i}`, name: t }));
+            const activationProfilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
+            // --- END: THIS IS THE BLOCK TO REPLACE ---
 
             dataToRender.forEach(entityRow => {
                 allCompanies.forEach(company => {
@@ -3555,7 +3564,6 @@ function renderRankingsImagePreview() {
             });
         }
     }
-    // --- END: MODIFIED LOGIC ---
 
     const data = rowCountValue === 'all' ? dataToRender : dataToRender.slice(0, parseInt(rowCountValue, 10));
 
