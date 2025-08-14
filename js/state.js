@@ -6,7 +6,8 @@ export const defaultRankingWeights = {
     compliance_score: { tte_percentile: 30, leads_reached_percentile: 20, past_due_ratio_percentile: 15, documents_score: 20, profiles_completed_percentile: 15, median_call_duration_percentile: 0 },
     calls_score: { outbound_calls_percentile: 40, unique_calls_percentile: 25, call_duration_seconds_percentile: 35 },
     sms_score: { outbound_sms_percentile: 50, unique_sms_percentile: 50 },
-    arrivals_score: { total_drug_tests_percentile: 40, onboarded_percentile: 60 },
+  arrivals_score: { total_drug_tests_percentile: 40, onboarded_percentile: 60 },
+   arrivals_score: { total_drug_tests_percentile: 25, onboarded_percentile: 35, drug_tests_per_hot_lead_percentile: 15, onboarded_per_hot_lead_percentile: 25 },
     documents_score: { mvr_percentile: 34, psp_percentile: 33, cdl_percentile: 33 }
 };
 
