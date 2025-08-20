@@ -6,7 +6,7 @@ export const defaultRankingWeights = {
     compliance_score: { tte_percentile: 30, leads_reached_percentile: 20, past_due_ratio_percentile: 10, documents_score: 10, profiles_completed_percentile: 25, median_call_duration_percentile: 5 },
     calls_score: { outbound_calls_percentile: 40, unique_calls_percentile: 25, call_duration_seconds_percentile: 35 },
     sms_score: { outbound_sms_percentile: 50, unique_sms_percentile: 50 },
-   arrivals_score: { total_drug_tests_percentile: 20, onboarded_percentile: 50, drug_tests_per_hot_lead_percentile: 10, onboarded_per_hot_lead_percentile: 20 },
+   arrivals_score: { total_drug_tests_percentile: 20, onboarded_percentile: 55, drug_tests_per_hot_lead_percentile: 10, onboarded_per_hot_lead_percentile: 15 },
     documents_score: { mvr_percentile: 34, psp_percentile: 33, cdl_percentile: 33 }
 };
 
@@ -157,3 +157,4 @@ export const state = {
     // Rankings Weight Settings for Profiler
     rankingWeightsProfiler: JSON.parse(JSON.stringify(defaultRankingWeightsProfiler))
 };
+
