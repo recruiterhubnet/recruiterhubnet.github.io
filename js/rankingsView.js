@@ -3570,25 +3570,44 @@ function renderRankingsImagePreview() {
         if (matchedItem) {
             const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
             
-            // --- START: THIS IS THE BLOCK TO REPLACE ---
-            // Use the exact same logic as delegationView.js to ensure entity IDs match.
-            // 1. Use the same combined data source.
             const combinedData = [...state.allData, ...state.drugTestsData];
-            
-            // 2. Get unique names WITHOUT sorting them before assigning IDs.
             const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
             const allProfilers = [...new Set(combinedData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
-            
-            // 3. Map to objects with consistent IDs.
             const activationTeams = allTeams.map((t, i) => ({ id: `t${i}`, name: t }));
             const activationProfilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
-            // --- END: THIS IS THE BLOCK TO REPLACE ---
+            const entityList = state.rankingsMode === 'team' ? activationTeams : activationProfilers;
 
+            // --- START OF THE FIX ---
+            // 1. Find all entities active for this contract/group in at least one company
+            const activeEntityNames = new Set();
+            allCompanies.forEach(company => {
+                const companyMatrix = savedActivationMatrix[company] || {};
+                entityList.forEach(entity => {
+                    const matrixKey = `${entity.id}_${matchedItem.id}`;
+                    if (companyMatrix[matrixKey] !== false) {
+                        activeEntityNames.add(entity.name);
+                    }
+                });
+            });
+
+            // 2. Calculate the total final score of ONLY the active entities
+            const totalActiveFinalScore = dataToRender.reduce((sum, entity) => {
+                return activeEntityNames.has(entity.name) ? sum + (entity.final_score || 0) : sum;
+            }, 0);
+
+            // 3. Recalculate BOTH the main delegation % and the company-specific ones
             dataToRender.forEach(entityRow => {
+                // Recalculate the main delegation %
+                if (activeEntityNames.has(entityRow.name) && totalActiveFinalScore > 0) {
+                    entityRow.delegation_percent = (entityRow.final_score / totalActiveFinalScore) * 100;
+                } else {
+                    entityRow.delegation_percent = null; // This will show as '—'
+                }
+
+                // Logic for company-specific delegation
                 allCompanies.forEach(company => {
                     const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
                     const companyMatrix = savedActivationMatrix[company] || {};
-                    const entityList = state.rankingsMode === 'team' ? activationTeams : activationProfilers;
                     const entityObj = entityList.find(p => p.name === entityRow.name);
                     
                     if (entityObj && companyMatrix[`${entityObj.id}_${matchedItem.id}`] !== false) {
@@ -3601,6 +3620,7 @@ function renderRankingsImagePreview() {
                     }
                 });
             });
+            // --- END OF THE FIX ---
         }
     }
 
@@ -3623,6 +3643,12 @@ function renderRankingsImagePreview() {
         const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
         columnLabels[key] = `${company.split(' ')[0]} Del %`;
     });
+
+    // --- ADDED NEW LABELS FOR HOT LEAD METRICS ---
+    columnLabels['drug_tests_per_hot_lead'] = 'DT / Hot Lead';
+    columnLabels['drug_tests_per_hot_lead_percentile'] = 'DT / Hot Lead %';
+    columnLabels['onboarded_per_hot_lead'] = 'Onboarded / Hot Lead';
+    columnLabels['onboarded_per_hot_lead_percentile'] = 'Onboarded / Hot Lead %';
 
     const getLabel = (key) => (columnLabels[key] || key).toUpperCase();
 
@@ -3651,13 +3677,15 @@ function renderRankingsImagePreview() {
             if (key.includes('percentile')) cellClass = 'percentile-cell';
 
             if (typeof value === 'number') {
-                if (key.includes('percentile') || key.includes('_score') || key.startsWith('delegation_')) {
+                if (key.includes('percentile') || key.includes('_score') || key.startsWith('delegation_') || key === 'leads_reached' || key === 'past_due_ratio') {
                     value = `${value.toFixed(1)}%`;
                 } else if (['tte_value', 'median_time_to_profile', 'median_call_duration', 'call_duration_seconds'].includes(key)) {
                     value = formatDuration(value);
                 } else {
                     value = Math.round(value);
                 }
+            } else if (value === '—' || value === null) {
+                value = '—';
             }
             return `<td class="${cellClass}">${value ?? 'N/A'}</td>`;
         }).join('')}</tr>`;
