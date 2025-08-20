@@ -8,6 +8,7 @@ let activeTooltip = null;
 const state = {
     currentView: 'master',
     currentEntity: 'team',
+    leadType: 'new_and_old',
     sortConfig: { key: 'entity', direction: 'asc' },
     cachedData: {
         team: null,
@@ -37,7 +38,7 @@ function generateProjectedLeadsBreakdownString(companyBreakdowns) {
     for (const company of sortedCompanies) {
         const contracts = companyBreakdowns[company]
             .filter(b => b.projLeads > 0) // Only show contracts with projected leads
-            .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+            .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
 
         if (contracts.length > 0) {
             // This line adds the new color class to the company name
@@ -185,7 +186,10 @@ function calculateDataForEntityType(entityType) {
     state.settings.contracts.forEach(contract => {
         const contractLeads = allDataLast7Days
             .filter(d => d.contract_type === contract.name)
-            .reduce((sum, d) => sum + (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0), 0);
+            .reduce((sum, d) => {
+                const leadCount = state.leadType === 'hot' ? d.hot_leads_assigned : (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0);
+                return sum + leadCount;
+            }, 0);
         totalLeadsByContractGroupAcrossAllEntities7d[contract.name] = contractLeads;
     });
 
@@ -225,7 +229,7 @@ function calculateDataForEntityType(entityType) {
 
         relevantHistory.forEach(d => {
             const dayIndex = (new Date(d.date).getDay() - sevenDaysAgoCutoff.getDay() + 7) % 7;
-            const leadCount = (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0);
+            const leadCount = state.leadType === 'hot' ? d.hot_leads_assigned : (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0);
             if (d.contract_type === 'ALL') {
                 entityData.leads7d.total += leadCount;
                 entityData.leads7d.daily[dayIndex] += leadCount;
@@ -249,6 +253,14 @@ function calculateDataForEntityType(entityType) {
         totalLeadsByContractGroupAcrossAllEntities7d: totalLeadsByContractGroupAcrossAllEntities7d,
         sevenDaysAgoCutoff: sevenDaysAgoCutoff
     };
+}
+
+function updateLeadTypeSwitcherVisibility() {
+    const switcherContainer = document.getElementById('lead-type-switcher-container');
+    if (switcherContainer) {
+        const isVisible = state.currentView !== 'master' && state.currentEntity === 'team';
+        switcherContainer.style.display = isVisible ? 'block' : 'none';
+    }
 }
 
 function calculateAndCacheAllData() {
@@ -591,16 +603,22 @@ function renderTargetsTable() {
                     ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name)
                     : [item.name];
 
-                const dayTotal = appState.allData
+                // This is the new, modified code
+                    const dayTotal = appState.allData
                     .filter(d => {
                         const rowDate = d.date;
                         return rowDate.getFullYear() === currentDate.getFullYear() &&
-                               rowDate.getMonth() === currentDate.getMonth() &&
-                               rowDate.getDate() === currentDate.getDate() &&
-                               contractNames.includes(d.contract_type) &&
-                               (!currentCompanyView || currentCompanyView === 'master' || d.company_name === currentCompanyView);
+                            rowDate.getMonth() === currentDate.getMonth() &&
+                            rowDate.getDate() === currentDate.getDate() &&
+                            contractNames.includes(d.contract_type) &&
+                            (!currentCompanyView || currentCompanyView === 'master' || d.company_name === currentCompanyView);
                     })
-                    .reduce((sum, d) => sum + (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0), 0);
+                    .reduce((sum, d) => {
+                        const leadCount = state.leadType === 'hot'
+                            ? (d.hot_leads_assigned || 0)
+                            : (d.new_leads_assigned_on_date || 0) + (d.old_leads_assigned_on_date || 0);
+                        return sum + leadCount;
+                    }, 0);
 
                 historicalCols.push(`<td class="historical-day">${dayTotal}</td>`);
             }
@@ -850,7 +868,7 @@ if (fromDate && toDate) {
             if (isEntityActiveForCompany) {
                 const leads = item.companyLeads[c] || 0;
                 const share = companyTotals[c] > 0 ? (leads / companyTotals[c]) * 100 : 0;
-                mainRowHTML += `<td class="col-numeric expand-cell">${leads} <span class="col-percent">(${share.toFixed(1)}%)</span><i class="fas fa-plus-circle fa-xs expand-btn" data-target="master-breakdown-${index}-${c.replace(/\s+/g, '-')}" title="Show contract breakdown for ${c}"></i></td>`;
+                mainRowHTML += `<td class="col-numeric expand-cell">${leads} <span class="col-percent">(${share.toFixed(0)}%)</span><i class="fas fa-plus-circle fa-xs expand-btn" data-target="master-breakdown-${index}-${c.replace(/\s+/g, '-')}" title="Show contract breakdown for ${c}"></i></td>`;
             } else {
                 mainRowHTML += `<td class="col-numeric">-</td>`;
             }
@@ -862,7 +880,7 @@ if (fromDate && toDate) {
                              if (breakdownItem.name.toUpperCase() === 'ALL') return '';
                              return `<div class="day-stat">
                                 <div class="day-label">${breakdownItem.name}</div>
-                                <div class="day-value">${breakdownItem.projLeads} (${breakdownItem.projDel.toFixed(1)}%)</div>
+                                <div class="day-value">${breakdownItem.projLeads} (${breakdownItem.projDel.toFixed(0)}%)</div>
                             </div>`;
                         }).join('')}
                     </div>
@@ -1090,7 +1108,7 @@ function renderCompanyView() {
             mainRowHTML += `<td class="td-group-start expand-cell" data-contract-group="${visItem.id}"><span class="col-numeric">${histData.avg.toFixed(1)}</span><i class="fas fa-plus-circle fa-xs expand-btn" data-target="contract-breakdown-${index}-${visItem.id}" title="Show daily breakdown for ${visItem.name}"></i></td>
                 <td class="col-percent">${histPerc.toFixed(1)}%</td>
                 <td class="col-percent font-semibold text-sky-300">${projData.rankPercent.toFixed(1)}%</td>
-                <td class="col-percent col-proj-leads"><strong>${projData.projDel.toFixed(1)}%</strong></td>
+                <td class="col-percent col-proj-leads"><strong>${projData.projDel.toFixed(0)}%</strong></td>
                 <td class="col-numeric font-semibold ${projLeadsColor}">${projData.projLeads}</td>`;
             
             breakdownRowsHTML += `<tr class="daily-breakdown ${colorClass}" id="contract-breakdown-${index}-${visItem.id}"><td colspan="${totalColumns}" class="breakdown-cell"><div class="breakdown-grid">
@@ -1159,7 +1177,7 @@ export function initializeDelegationView() {
     const openSettingsBtn = document.getElementById('openDelegationSettingsBtn');
     const copyBtn = document.getElementById('copyDelegationBtn');
     const downloadBtn = document.getElementById('downloadDelegationBtn');
-    const downloadImageBtn = document.getElementById('downloadImageBtn'); // ADD THIS LINE
+    const downloadImageBtn = document.getElementById('downloadImageBtn');
 
     const closeSettingsBtn = document.getElementById('closeDelegationSettingsBtn');
     const saveSettingsBtn = document.getElementById('saveDelegationSettingsBtn');
@@ -1219,7 +1237,7 @@ if (delegationTable) {
         });
     }
 
-    if (downloadImageBtn) { // ADD THIS BLOCK
+    if (downloadImageBtn) {
         downloadImageBtn.addEventListener('click', downloadDelegationAsImage);
     }
 
@@ -1388,7 +1406,6 @@ if (delegationTable) {
             const companyView = state.currentView;
             if (companyView === 'master') return;
     
-            // --- THIS IS THE FIX: Ensure nested objects exist before saving ---
             if (!state.settings.targets[state.currentEntity]) {
                 state.settings.targets[state.currentEntity] = {};
             }
@@ -1413,7 +1430,8 @@ if (delegationTable) {
             state.currentView = button.dataset.view;
             calculateAndCacheAllData();
             renderTable();
-            updateDelegationViewVisibility(); // Call the new function here
+            updateDelegationViewVisibility();
+            updateLeadTypeSwitcherVisibility(); // This line was added
         }
     });
 
@@ -1422,6 +1440,7 @@ if (delegationTable) {
             delegationView.querySelectorAll('.entity-switcher .switcher-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
             state.currentEntity = e.target.dataset.entity;
+            updateLeadTypeSwitcherVisibility();
             calculateAndCacheAllData();
             renderTable();
         }
@@ -1447,9 +1466,6 @@ if (delegationTable) {
         }
     });
 
-    // Initial visibility check
-    const isMasterView = state.currentView === 'master';
-    // --- Tooltip Logic for Copy/Download Buttons ---
     const actionsContainer = document.getElementById('delegationActionsContainer');
     let tooltipElement = null;
 
@@ -1457,21 +1473,18 @@ if (delegationTable) {
         actionsContainer.addEventListener('mouseover', (e) => {
             const button = e.target.closest('button');
             if (button && button.dataset.tooltip) {
-                // Remove any existing tooltip
                 if (tooltipElement) tooltipElement.remove();
 
-                // Create new tooltip
                 tooltipElement = document.createElement('div');
                 tooltipElement.className = 'delegation-tooltip';
                 tooltipElement.textContent = button.dataset.tooltip;
                 document.body.appendChild(tooltipElement);
 
-                // Position it
                 const btnRect = button.getBoundingClientRect();
                 const tooltipRect = tooltipElement.getBoundingClientRect();
                 
                 tooltipElement.style.left = `${btnRect.left + (btnRect.width / 2) - (tooltipRect.width / 2)}px`;
-                tooltipElement.style.top = `${btnRect.top - tooltipRect.height - 8}px`; // 8px above the button
+                tooltipElement.style.top = `${btnRect.top - tooltipRect.height - 8}px`;
             }
         });
 
@@ -1483,13 +1496,28 @@ if (delegationTable) {
         });
     }
 
-    updateDelegationViewVisibility();
+    const leadTypeSwitcher = document.getElementById('lead-type-switcher-container');
+    if (leadTypeSwitcher) {
+        leadTypeSwitcher.addEventListener('click', (e) => {
+            const button = e.target.closest('.switcher-btn');
+            if (button && button.dataset.leadType) {
+                leadTypeSwitcher.querySelectorAll('.switcher-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                state.leadType = button.dataset.leadType;
+                calculateAndCacheAllData();
+                renderTable();
+            }
+        });
+    }
 
+    updateDelegationViewVisibility();
 }
+
 export function rerenderDelegationView() {
     calculateAndCacheAllData();
     renderTable();
     updateDelegationViewVisibility(); // Add this line
+    updateLeadTypeSwitcherVisibility();
 }
 function downloadAsTextFile(content, filename) {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -1528,7 +1556,7 @@ function generateAndDownloadSummary() {
         for (const company of sortedCompanies) {
             const contracts = entityRow.companyBreakdowns[company]
                 .filter(b => b.projDel > 0) // Only include contracts with projected delegation
-                .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+                .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
             
             if (contracts.length > 0) {
                 breakdownParts.push(`${company}: ${contracts.join(', ')}`);
@@ -1580,7 +1608,7 @@ function generateDelegationSummaryText() {
                     // Exclude if it has no projection, is not visible, or is the 'ALL' contract
                     return b.projDel > 0 && item && visibleItemIds.includes(item.id) && item.id !== allContractId;
                 })
-                .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+                .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
             
             if (contracts.length > 0) {
                 breakdownParts.push(`${company}: ${contracts.join(', ')}`);
@@ -1676,7 +1704,7 @@ function downloadDelegationAsImage() {
                     // Exclude if it has no projection, is not visible, or is the 'ALL' contract
                     return item && b.projDel > 0 && visibleItemIds.includes(item.id) && item.id !== allContractId;
                 })
-                .map(b => `${b.name} (${b.projDel.toFixed(1)}%)`);
+                .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
 
             if (contracts.length > 0) {
                 const companyClass = `company-${company.toLowerCase().replace(/\s+/g, '-')}`;
