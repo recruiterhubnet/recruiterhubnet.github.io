@@ -3354,65 +3354,175 @@ function initializeRankingsImageModal() {
     if (!modal) return;
 
     const settingsContainer = document.getElementById('rankingsImageSettings');
+    const previewContainer = document.getElementById('rankingsImagePreviewContainer');
+    
+    // MODIFICATION START: Add a debounce timer variable
+    let debounceTimer;
+    // MODIFICATION END
 
     document.getElementById('openRankingsImageModalBtn')?.addEventListener('click', openRankingsImageModal);
     document.getElementById('closeRankingsImageModalBtn')?.addEventListener('click', () => modal.classList.add('hidden'));
     document.getElementById('generateRankingsImageBtn')?.addEventListener('click', generateRankingsImage);
     
-    // MODIFIED: Added a more specific event listener
     if (settingsContainer) {
         settingsContainer.addEventListener('change', (e) => {
             if (e.target.matches('.image-col-checkbox, #rankingsImageRowCount, #imageReportContractSelect')) {
-                // Save checkbox state when it changes
                 const uncheckedKeys = Array.from(settingsContainer.querySelectorAll('.image-col-checkbox:not(:checked)'))
                     .map(cb => cb.dataset.key);
                 localStorage.setItem('rankingsImageUncheckedColumns', JSON.stringify(uncheckedKeys));
-
                 renderRankingsImagePreview();
             }
         });
     }
+    
+    // MODIFICATION START: This listener now uses the debounce logic
+    if (previewContainer) {
+        previewContainer.addEventListener('input', (e) => {
+            if (e.target.matches('.prev-del-input')) {
+                // Clear the previous timer to reset the waiting period
+                clearTimeout(debounceTimer);
+                // Set a new timer to run the render function after 300ms of inactivity
+                debounceTimer = setTimeout(() => {
+                    renderRankingsImagePreview();
+                }, 300);
+            }
+        });
+    }
+    // MODIFICATION END
 }
 
 // Add this function at the end of the file
+// This is the new, fixed function
 function openRankingsImageModal() {
     const settingsContainer = document.getElementById('rankingsImageSettings');
     if (!settingsContainer) return;
 
+    const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
     const headerConfig = getRankingsHeaderConfig();
     const mode = state.rankingsMode;
     
-    // --- START: NEW LOGIC to add Company Delegation columns ---
+    const fromDateStr = document.getElementById('rankingsDateFromFilter').value;
+    const toDateStr = document.getElementById('rankingsDateToFilter').value;
+    
+    let statsHtmlBlock = '';
+    
+    if (fromDateStr && toDateStr) {
+        const fromDate = new Date(fromDateStr + 'T00:00:00');
+        const toDate = new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1));
+        const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
+        
+        const savedDelegationSettings = JSON.parse(localStorage.getItem('delegationSettings')) || { contracts: [], groups: [] };
+        const savedActivationMatrix = JSON.parse(localStorage.getItem('delegationActivation')) || {};
+
+        let matchedItem = null;
+        if (selectedContracts.length === 1 && selectedContracts[0].toUpperCase() !== 'ALL') {
+            matchedItem = savedDelegationSettings.contracts.find(c => c.name === selectedContracts[0]);
+        } else if (selectedContracts.length > 1) {
+            const selectedSet = new Set(selectedContracts.sort());
+            const contractIdToNameMap = new Map(savedDelegationSettings.contracts.map(c => [c.id, c.name]));
+            matchedItem = savedDelegationSettings.groups.find(group => {
+                const groupContractNames = new Set(group.contractIds.map(id => contractIdToNameMap.get(id)).sort());
+                return selectedSet.size === groupContractNames.size && [...selectedSet].every(name => groupContractNames.has(name));
+            });
+        }
+
+        const companyStats = {};
+        allCompanies.forEach(c => {
+            companyStats[c] = { hot_leads: 0, recycled_leads: 0 };
+        });
+
+        if (matchedItem) {
+            const combinedDataForIds = [...state.allData, ...state.drugTestsData];
+            const allTeams = [...new Set(combinedDataForIds.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
+            const allProfilers = [...new Set(combinedDataForIds.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
+            const activationTeams = allTeams.map((t, i) => ({ id: `t${i}`, name: t }));
+            const activationProfilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
+
+            const entityList = state.rankingsMode === 'team' 
+                ? activationTeams
+                : activationProfilers;
+
+            const activeEntityNames = new Set();
+            entityList.forEach(entity => {
+                const isActiveInAnyCompany = allCompanies.some(company => {
+                    const companyMatrix = savedActivationMatrix[company] || {};
+                    return companyMatrix[`${entity.id}_${matchedItem.id}`] !== false;
+                });
+                if (isActiveInAnyCompany) {
+                    activeEntityNames.add(entity.name);
+                }
+            });
+
+            const currentWeekData = state.allData.filter(row => {
+                const rowDate = new Date(row.date);
+                const entityName = state.rankingsMode === 'team' ? row.team_name : row.recruiter_name;
+                const contractMatch = selectedContracts.length === 0 || selectedContracts.includes(row.contract_type) || selectedContracts.includes('ALL');
+                return rowDate >= fromDate && rowDate <= toDate && contractMatch && activeEntityNames.has(entityName);
+            });
+
+            currentWeekData.forEach(row => {
+                if (companyStats[row.company_name]) {
+                    companyStats[row.company_name].hot_leads += row.hot_leads_assigned || 0;
+                    companyStats[row.company_name].recycled_leads += row.recycled_leads || 0;
+                }
+            });
+        }
+
+        const statsHtml = allCompanies.map(company => `
+            <div class="flex justify-between">
+                <span>${company}:</span>
+                <span class="font-mono text-sky-400">
+                    Hot: ${formatNumber(companyStats[company].hot_leads, 0)} | 
+                    Recycled: ${formatNumber(companyStats[company].recycled_leads, 0)}
+                </span>
+            </div>
+        `).join('');
+
+        statsHtmlBlock = `
+            <div>
+                <div class="p-3 bg-gray-800/50 rounded-lg text-xs text-gray-400 space-y-2">
+                    <div class="font-semibold text-gray-300">Hot/Recycled Leads (Active Delegation)</div>
+                    ${statsHtml || '<p class="text-center text-gray-500">No active entities for this contract.</p>'}
+                </div>
+            </div>
+        `;
+        settingsContainer.dataset.companyStats = JSON.stringify(companyStats);
+    }
+
     const columnLabels = {};
     headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
     Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
     columnLabels['delegation_percent'] = 'Delegation %';
     columnLabels['recycled_leads'] = mode === 'profiler' ? 'TOTAL LEADS' : 'RECYCLED';
-    // --- ADDED NEW LABELS FOR HOT LEAD METRICS ---
     columnLabels['drug_tests_per_hot_lead'] = 'DT / Hot Lead';
     columnLabels['drug_tests_per_hot_lead_percentile'] = 'DT / Hot Lead %';
     columnLabels['onboarded_per_hot_lead'] = 'Onboarded / Hot Lead';
     columnLabels['onboarded_per_hot_lead_percentile'] = 'Onboarded / Hot Lead %';
+    columnLabels['projected_hot'] = 'Projected Hot';
+    columnLabels['projected_recycled'] = 'Projected Recycled';
+    columnLabels['proj_hot_diff'] = 'Proj. Hot Diff';
+    columnLabels['proj_recycled_diff'] = 'Proj. Recycled Diff';
 
-
-    const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
     const companyDelegationKeys = [];
+    const prevCompanyDelegationKeys = [];
     allCompanies.forEach(company => {
         const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
         companyDelegationKeys.push(key);
         columnLabels[key] = `${company.split(' ')[0]} Del %`; 
+        
+        const prevKey = `prev_${key}`;
+        prevCompanyDelegationKeys.push(prevKey);
+        columnLabels[prevKey] = `Prev. ${company.split(' ')[0]} %`;
     });
-    // --- END: NEW LOGIC ---
 
     const allColumnsForModal = getRankingsColumnsInOrder();
-    allColumnsForModal.push('delegation_percent', 'recycled_leads', ...companyDelegationKeys);
+    allColumnsForModal.push('delegation_percent', 'recycled_leads', ...companyDelegationKeys, 'projected_hot', 'projected_recycled', ...prevCompanyDelegationKeys, 'proj_hot_diff', 'proj_recycled_diff');
 
     const groups = {
-        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'recycled_leads', 'new_leads_assigned_on_date', 'old_leads_assigned_on_date', 'hot_leads_assigned', 'fresh_leads_assigned_on_date', 'final_score', 'delegation_percent', ...companyDelegationKeys],
+        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'recycled_leads', 'hot_leads_assigned', 'final_score', ...companyDelegationKeys, ...prevCompanyDelegationKeys, 'projected_hot', 'projected_recycled', 'proj_hot_diff', 'proj_recycled_diff'],
         "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
         "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
         "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'median_call_duration', 'median_call_duration_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
-        // --- ADDED NEW METRICS TO THE ARRIVALS GROUP ---
         "Arrivals Metrics": ['total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile', 'drug_tests_per_hot_lead', 'drug_tests_per_hot_lead_percentile', 'onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile']
     };
 
@@ -3431,31 +3541,22 @@ function openRankingsImageModal() {
             </label>
         </div>
     </div>
-`;
+    `;
 
-    let settingsHtml = displayOptionsHtml;
+    let settingsHtml = displayOptionsHtml + statsHtmlBlock;
+    
     const defaultVisibleMetrics = [
-        'rank',
-        'name',
-        'recycled_leads',
-        'hot_leads_assigned',
-        'final_score',
-        'delegation_amongus',
-        'delegation_eb_infinity',
-        'delegation_smj',
-        'profiles_completed',
-        'total_drug_tests',
-        'onboarded',
-        // --- ADDED NEW METRICS TO BE CHECKED BY DEFAULT ---
-        'drug_tests_per_hot_lead',
-        'onboarded_per_hot_lead'
+        'rank', 'name', 'recycled_leads', 'hot_leads_assigned', 'final_score',
+        'delegation_amongus', 'delegation_eb_infinity', 'delegation_smj', 
+        'prev_delegation_amongus', 'prev_delegation_eb_infinity', 'prev_delegation_smj',
+        'projected_hot', 'projected_recycled', 'proj_hot_diff', 'proj_recycled_diff',
+        'profiles_completed', 'total_drug_tests', 'onboarded'
     ];
     for (const groupName in groups) {
         const availableKeys = groups[groupName].filter(key => allColumnsForModal.includes(key));
         if (availableKeys.length > 0) {
             settingsHtml += `<div><h4>${groupName}</h4><div class="space-y-1 mt-2">`;
             availableKeys.forEach(key => {
-                // --- MODIFY THIS LINE ---
                 const isCheckedByDefault = defaultVisibleMetrics.includes(key);
                 settingsHtml += `
                     <label class="flex items-center space-x-3 p-1 rounded-md hover:bg-gray-700/50 cursor-pointer">
@@ -3488,10 +3589,21 @@ function renderRankingsImagePreview() {
     const previewContainer = document.getElementById('rankingsImagePreviewContainer');
     if (!previewContainer) return;
 
+    // The complex focus-saving logic has been fully removed.
+
+    const companyStats = JSON.parse(document.getElementById('rankingsImageSettings').dataset.companyStats || '{}');
+    const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
+
     const selectedKeys = Array.from(document.querySelectorAll('.image-col-checkbox:checked')).map(cb => cb.dataset.key);
     const rowCountValue = document.getElementById('rankingsImageRowCount')?.value || '10';
     
     let dataToRender = [...state.rankedData].map(row => ({...row}));
+
+    const prevDelegationValues = {};
+    const prevInputs = previewContainer.querySelectorAll('.prev-del-input');
+    prevInputs.forEach(input => {
+        prevDelegationValues[input.dataset.key] = parseFloat(input.value) || 0;
+    });
 
     const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
     const savedDelegationSettings = JSON.parse(localStorage.getItem('delegationSettings')) || { contracts: [], groups: [] };
@@ -3568,7 +3680,6 @@ function renderRankingsImagePreview() {
         const savedActivationMatrix = JSON.parse(localStorage.getItem('delegationActivation')) || {};
         
         if (matchedItem) {
-            const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
             
             const combinedData = [...state.allData, ...state.drugTestsData];
             const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
@@ -3577,8 +3688,6 @@ function renderRankingsImagePreview() {
             const activationProfilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
             const entityList = state.rankingsMode === 'team' ? activationTeams : activationProfilers;
 
-            // --- START OF THE FIX ---
-            // 1. Find all entities active for this contract/group in at least one company
             const activeEntityNames = new Set();
             allCompanies.forEach(company => {
                 const companyMatrix = savedActivationMatrix[company] || {};
@@ -3590,23 +3699,27 @@ function renderRankingsImagePreview() {
                 });
             });
 
-            // 2. Calculate the total final score of ONLY the active entities
             const totalActiveFinalScore = dataToRender.reduce((sum, entity) => {
                 return activeEntityNames.has(entity.name) ? sum + (entity.final_score || 0) : sum;
             }, 0);
 
-            // 3. Recalculate BOTH the main delegation % and the company-specific ones
             dataToRender.forEach(entityRow => {
-                // Recalculate the main delegation %
+                entityRow.projected_hot = 0;
+                entityRow.projected_recycled = 0;
+                entityRow.proj_hot_diff = 0;
+                entityRow.proj_recycled_diff = 0;
+
                 if (activeEntityNames.has(entityRow.name) && totalActiveFinalScore > 0) {
                     entityRow.delegation_percent = (entityRow.final_score / totalActiveFinalScore) * 100;
                 } else {
-                    entityRow.delegation_percent = null; // This will show as '—'
+                    entityRow.delegation_percent = null;
                 }
 
-                // Logic for company-specific delegation
                 allCompanies.forEach(company => {
-                    const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
+                    const companyKey = company.toLowerCase().replace(/\s+/g, '_');
+                    const key = `delegation_${companyKey}`;
+                    const prevKey = `prev_delegation_${companyKey}_${entityRow.name.replace(/\s+/g, '_')}`;
+
                     const companyMatrix = savedActivationMatrix[company] || {};
                     const entityObj = entityList.find(p => p.name === entityRow.name);
                     
@@ -3614,13 +3727,25 @@ function renderRankingsImagePreview() {
                         const activeEntitiesInMatrix = entityList.filter(ent => companyMatrix[`${ent.id}_${matchedItem.id}`] !== false);
                         const totalScore = activeEntitiesInMatrix.reduce((sum, ent) => sum + (contractRankMap.get(ent.name) || 0), 0);
                         const entityScore = contractRankMap.get(entityRow.name) || 0;
-                        entityRow[key] = totalScore > 0 ? (entityScore / totalScore) * 100 : 0;
+                        const delegationPercent = totalScore > 0 ? (entityScore / totalScore) * 100 : 0;
+                        entityRow[key] = delegationPercent;
+
+                        if (companyStats[company]) {
+                            const companyHotLeads = companyStats[company].hot_leads || 0;
+                            const companyRecycledLeads = companyStats[company].recycled_leads || 0;
+                            entityRow.projected_hot += (delegationPercent / 100) * companyHotLeads;
+                            entityRow.projected_recycled += (delegationPercent / 100) * companyRecycledLeads;
+                            
+                            const prevDelegation = prevDelegationValues[prevKey] || 0;
+                            const diffPercent = delegationPercent - prevDelegation;
+                            entityRow.proj_hot_diff += (diffPercent / 100) * companyHotLeads;
+                            entityRow.proj_recycled_diff += (diffPercent / 100) * companyRecycledLeads;
+                        }
                     } else {
                         entityRow[key] = '—';
                     }
                 });
             });
-            // --- END OF THE FIX ---
         }
     }
 
@@ -3638,13 +3763,17 @@ function renderRankingsImagePreview() {
     Object.keys(headerConfig.columnDetails).forEach(k => columnLabels[k] = headerConfig.columnDetails[k].label);
     columnLabels['delegation_percent'] = 'Delegation %';
     columnLabels['recycled_leads'] = mode === 'profiler' ? 'TOTAL LEADS' : 'RECYCLED';
-    const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
     allCompanies.forEach(company => {
-        const key = `delegation_${company.toLowerCase().replace(/\s+/g, '_')}`;
-        columnLabels[key] = `${company.split(' ')[0]} Del %`;
+        const companyKey = company.toLowerCase().replace(/\s+/g, '_');
+        columnLabels[`delegation_${companyKey}`] = `${company.split(' ')[0]} Del %`;
+        columnLabels[`prev_delegation_${companyKey}`] = `Prev. ${company.split(' ')[0]} %`;
     });
 
-    // --- ADDED NEW LABELS FOR HOT LEAD METRICS ---
+    columnLabels['projected_hot'] = 'Projected Hot';
+    columnLabels['projected_recycled'] = 'Projected Recycled';
+    columnLabels['proj_hot_diff'] = 'Proj. Hot Diff';
+    columnLabels['proj_recycled_diff'] = 'Proj. Recycled Diff';
+
     columnLabels['drug_tests_per_hot_lead'] = 'DT / Hot Lead';
     columnLabels['drug_tests_per_hot_lead_percentile'] = 'DT / Hot Lead %';
     columnLabels['onboarded_per_hot_lead'] = 'Onboarded / Hot Lead';
@@ -3674,10 +3803,26 @@ function renderRankingsImagePreview() {
             if (key === 'rank') cellClass = 'rank-cell';
             if (key.includes('_score') || key.startsWith('delegation_')) cellClass = `${key.replace(/_/g, '-')}-cell score-cell`;
             
+            if (key === 'projected_hot' || key === 'projected_recycled') {
+                cellClass = 'projected-leads-cell score-cell';
+            }
+            if (key === 'proj_hot_diff' || key === 'proj_recycled_diff') {
+                cellClass = 'projected-diff-cell score-cell';
+            }
+            
             if (key.includes('percentile')) cellClass = 'percentile-cell';
 
+            if (key.startsWith('prev_delegation_')) {
+                const inputKey = `${key}_${row.name.replace(/\s+/g, '_')}`;
+                const currentVal = prevDelegationValues[inputKey] || '';
+                return `<td class="prev-del-input-cell"><input type="number" class="prev-del-input" data-key="${inputKey}" value="${currentVal}" /></td>`;
+            }
+
             if (typeof value === 'number') {
-                if (key.includes('percentile') || key.includes('_score') || key.startsWith('delegation_') || key === 'leads_reached' || key === 'past_due_ratio') {
+                if (key.startsWith('delegation_') && key !== 'delegation_percent') {
+                    value = `${value.toFixed(0)}%`;
+                } 
+                else if (key.includes('percentile') || key.includes('_score') || key === 'leads_reached' || key === 'past_due_ratio') {
                     value = `${value.toFixed(1)}%`;
                 } else if (['tte_value', 'median_time_to_profile', 'median_call_duration', 'call_duration_seconds'].includes(key)) {
                     value = formatDuration(value);
@@ -3708,6 +3853,8 @@ function renderRankingsImagePreview() {
         </div>
         <table>${headerHtml}${bodyHtml}</table>
     `;
+
+    // The old focus restoration code block that caused the error has been removed.
 }
 
 // Add this function at the end of the file
