@@ -3519,7 +3519,7 @@ function openRankingsImageModal() {
     allColumnsForModal.push('delegation_percent', 'recycled_leads', ...companyDelegationKeys, 'projected_hot', 'projected_recycled', ...prevCompanyDelegationKeys, 'proj_hot_diff', 'proj_recycled_diff');
 
     const groups = {
-        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'recycled_leads', 'hot_leads_assigned', 'final_score', ...companyDelegationKeys, ...prevCompanyDelegationKeys, 'projected_hot', 'projected_recycled', 'proj_hot_diff', 'proj_recycled_diff'],
+        "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'recycled_leads', 'hot_leads_assigned', 'final_score', 'delegation_percent', ...companyDelegationKeys, ...prevCompanyDelegationKeys, 'projected_hot', 'projected_recycled', 'proj_hot_diff', 'proj_recycled_diff'],
         "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
         "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
         "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'median_call_duration', 'median_call_duration_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
@@ -3546,10 +3546,9 @@ function openRankingsImageModal() {
     let settingsHtml = displayOptionsHtml + statsHtmlBlock;
     
     const defaultVisibleMetrics = [
-        'rank', 'name', 'recycled_leads', 'hot_leads_assigned', 'final_score',
+        'rank', 'name', 'recycled_leads', 'hot_leads_assigned', , 'fresh_leads_assigned_on_date', 'final_score',
         'delegation_amongus', 'delegation_eb_infinity', 'delegation_smj', 
-        'prev_delegation_amongus', 'prev_delegation_eb_infinity', 'prev_delegation_smj',
-        'projected_hot', 'projected_recycled', 'proj_hot_diff', 'proj_recycled_diff',
+        
         'profiles_completed', 'total_drug_tests', 'onboarded'
     ];
     for (const groupName in groups) {
