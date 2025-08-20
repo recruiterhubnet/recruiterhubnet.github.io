@@ -2303,3 +2303,40 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     background-color: #374151 !important; /* !important to override modal-input styles */
 }
 /* --- END: New Exclusion Rule Editor Styles --- */
+/* --- START: Projected Leads Styling for Image Modal --- */
+#rankingsImagePreviewContainer .projected-leads-cell {
+    background-color: transparent !important;
+    color: #3fb950 !important; /* A nice green color */
+}
+/* --- END: Projected Leads Styling for Image Modal --- */
+/* --- START: Styles for New Columns in Image Modal (ROW INPUTS) --- */
+#rankingsImagePreviewContainer .prev-del-input-cell {
+    padding: 2px !important; /* Reduce padding to fit input */
+}
+
+#rankingsImagePreviewContainer td .prev-del-input {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    background-color: #374151;
+    border: 1px solid #4b5563;
+    color: #e5e7eb;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 0.8rem;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+#rankingsImagePreviewContainer td .prev-del-input::-webkit-outer-spin-button,
+#rankingsImagePreviewContainer td .prev-del-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Styles for the projection difference columns */
+#rankingsImagePreviewContainer .projected-diff-cell {
+    background-color: transparent !important;
+    color: #facc15 !important;
+    font-weight: 600;
+}
+/* --- END: Styles for New Columns in Image Modal (ROW INPUTS) --- */
