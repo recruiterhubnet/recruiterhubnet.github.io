@@ -290,6 +290,7 @@ function renderTrendChart(recruiterName) {
     const company = document.getElementById('chartCompanyFilter').value;
             
     let recruiterData = state.allData.filter(d => 
+        d.level === 'RECRUITER' && // <<< THIS IS THE FIX
         d.recruiter_name === recruiterName &&
         (!contract || d.contract_type === contract) &&
         (!company || d.company_name === company)
