@@ -201,7 +201,8 @@ function processAndSortTTEData() {
 
     const baseFilteredData = state.allData.filter(row => {
         const rowDate = row.date.toISOString().split('T')[0];
-        return (!recruiterFilter || row.recruiter_name === recruiterFilter) &&
+        return row.level === 'RECRUITER' && // <<< THIS IS THE NEW LINE
+            (!recruiterFilter || row.recruiter_name === recruiterFilter) &&
             (!teamFilter || row.team_name === teamFilter) &&
             (!companyFilter || row.company_name === companyFilter) &&
             (!contractFilter || row.contract_type === contractFilter) &&
