@@ -52,9 +52,9 @@ function initializeApp() {
             return;
         }
 
-        // --- Data Processing (No changes here) ---
         state.allData = data.leadRiskData ? data.leadRiskData.map(row => ({
             ...row, date: new Date(row.date),
+            level: row.level, // <<< THIS IS THE NEW LINE
             unique_phone_reveals: Number(row.unique_phone_reveals || 0), total_phone_reveals: Number(row.total_phone_reveals || 0),
             call_duration_seconds: Number(row.call_duration_seconds || 0), unique_calls: Number(row.unique_calls || 0),
             outbound_calls: Number(row.outbound_calls || 0),
