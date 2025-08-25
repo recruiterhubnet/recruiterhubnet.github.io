@@ -120,6 +120,7 @@ export function applyAllFiltersAndRender() {
     const dateTo = document.getElementById('dateToFilter').value;
     
     let processedData = data.filter(row => {
+        if (row.level !== 'RECRUITER') return false; // <<< THIS IS THE NEW LINE
         const contractMatch = !contract || row.contract_type === contract;
         const teamMatch = !team || row.team_name === team;
         const companyMatch = !company || row.company_name === company;
