@@ -1766,10 +1766,23 @@ function renderRankings() {
     const fromDate = fromDateStr ? new Date(fromDateStr) : null;
     const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
 
+    // --- START: NEW AND CORRECTED LOGIC ---
+
+    // 1. Pre-filter state.allData based on the 'level' column and the current view mode.
+    // This creates a clean dataset that we can work with.
+    const leadRiskDataForLevel = state.allData.filter(row => {
+        if (state.rankingsMode === 'team') {
+            return row.level === 'TEAM';
+        }
+        // For 'recruiter' and 'profiler' modes, we need 'RECRUITER' level data.
+        return row.level === 'RECRUITER';
+    });
+
+    // 2. Define a universal filter for date and team that will be applied to ALL data sources.
     const matchesDateAndTeam = (row) => {
         const rowDate = row.date ? new Date(row.date) : null;
         const dateMatch = (!fromDate || !toDate) || (rowDate && (!fromDate || rowDate >= fromDate) && (!toDate || rowDate <= toDate));
-        const teamName = row.team_name || row.team; 
+        const teamName = row.team_name || row.team;
 
         if (state.rankingsMode === 'profiler') {
             return dateMatch && teamName === 'Profilers';
@@ -1779,8 +1792,8 @@ function renderRankings() {
         return dateMatch && teamMatch;
     };
 
+    // 3. Define a standard filter for company and contract.
     const standardFilter = (row) => {
-        if (!matchesDateAndTeam(row)) return false;
         const companyMatch = selectedCompanies.includes(row.company_name);
         const contractMatch = selectedContracts.includes(row.contract_type);
         return companyMatch && contractMatch;
@@ -1789,14 +1802,15 @@ function renderRankings() {
     if (selectedCompanies.length === 0 || selectedContracts.length === 0) {
         state.rankedData = [];
     } else {
-        const filteredLeadRiskData = state.allData.filter(standardFilter);
-        const filteredMvrPspCdlData = state.mvrPspCdlData.filter(standardFilter);
-        const filteredPastDueData = state.recruiterData.filter(row => {
-            return matchesDateAndTeam(row);
-        });
-        const filteredProfilerData = state.profilerData.filter(row => {
-            return matchesDateAndTeam(row);
-        });
+        // 4. Apply the correct filters to the correct data sources.
+        
+        // Start with our pre-filtered data and then apply the other filters.
+        const filteredLeadRiskData = leadRiskDataForLevel.filter(row => matchesDateAndTeam(row) && standardFilter(row));
+        
+        // These other data sources do NOT have a 'level' column, so we only apply the standard filters to them.
+        const filteredMvrPspCdlData = state.mvrPspCdlData.filter(row => matchesDateAndTeam(row) && standardFilter(row));
+        const filteredPastDueData = state.recruiterData.filter(matchesDateAndTeam);
+        const filteredProfilerData = state.profilerData.filter(matchesDateAndTeam);
 
         const arrivalsFilter = (row) => {
             if (!matchesDateAndTeam(row)) return false;
@@ -1808,6 +1822,7 @@ function renderRankings() {
         const filteredArrivalsData = state.arrivalsData.filter(arrivalsFilter);
         const filteredDrugTestsData = state.drugTestsData.filter(arrivalsFilter);
 
+        // 5. Combine the correctly filtered data into the final rawData array.
         const rawData = [
             ...filteredLeadRiskData,
             ...filteredMvrPspCdlData,
@@ -1816,10 +1831,12 @@ function renderRankings() {
             ...filteredArrivalsData,
             ...filteredDrugTestsData
         ];
-
+        
         state.rankedData = calculateRankings(rawData, state.rankingsMode);
     }
     
+    // --- END: NEW AND CORRECTED LOGIC ---
+
     const { key, direction } = state.rankingsSortConfig;
     if (key) {
         const dir = direction === 'asc' ? 1 : -1;
