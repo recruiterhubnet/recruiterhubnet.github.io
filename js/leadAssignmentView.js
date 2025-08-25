@@ -141,6 +141,7 @@ function processAndSortLAData() {
     const toDate = new Date(toDateStr + 'T00:00:00');
 
     const baseFilteredData = state.allData.filter(row => 
+        row.level === 'RECRUITER' && // <<< THIS IS THE NEW LINE
         (!recruiterFilter || row.recruiter_name === recruiterFilter) &&
         (!teamFilter || row.team_name === teamFilter) &&
         (!companyFilter || row.company_name === companyFilter) &&
@@ -353,9 +354,9 @@ function renderLATrendChart() {
 
 
     const filteredChartData = state.allData.filter(row => {
+        if (row.level !== 'RECRUITER') return false; // <<< THIS IS THE FIX
         const rowDate = row.date.toISOString().split('T')[0];
         const dateMatch = rowDate >= fromDateStr && rowDate <= toDateStr;
-        // --- FIX: Apply the filters to the data ---
         const recruiterMatch = !recruiterFilter || row.recruiter_name === recruiterFilter;
         const teamMatch = !teamFilter || row.team_name === teamFilter;
         return dateMatch && recruiterMatch && teamMatch;
