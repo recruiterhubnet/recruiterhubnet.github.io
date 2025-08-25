@@ -29,6 +29,13 @@ function calculateMetricForPopup(entityName, entityMode, metricType, calculation
     const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
 
     const relevantData = state.allData.filter(row => {
+        // <<< START: THIS IS THE FIX >>>
+        const levelMatch =
+            (state.rankingsMode === 'team' && row.level === 'TEAM') ||
+            ((state.rankingsMode === 'recruiter' || state.rankingsMode === 'profiler') && row.level === 'RECRUITER');
+        if (!levelMatch) return false;
+        // <<< END: THIS IS THE FIX >>>
+
         const nameMatch = entityMode === 'team' ? row.team_name === entityName : row.recruiter_name === entityName;
         const rowDate = new Date(row.date);
         const dateMatch = rowDate >= fromDate && rowDate <= toDate;
@@ -2429,6 +2436,13 @@ function getCommunicationByDayData(entityName) {
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     const filteredRawData = state.allData.filter(row => {
+        // <<< START: THIS IS THE FIX >>>
+        const levelMatch =
+            (state.rankingsMode === 'team' && row.level === 'TEAM') ||
+            ((state.rankingsMode === 'recruiter' || state.rankingsMode === 'profiler') && row.level === 'RECRUITER');
+        if (!levelMatch) return false;
+        // <<< END: THIS IS THE FIX >>>
+
         if (state.rankingsMode === 'recruiter' || state.rankingsMode === 'profiler') {
             return row.recruiter_name === entityName;
         }
@@ -2574,6 +2588,13 @@ function populateEffortTab(entity) {
     const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
 
     const relevantRawData = state.allData.filter(row => {
+        // <<< START: THIS IS THE FIX >>>
+        const levelMatch =
+            (state.rankingsMode === 'team' && row.level === 'TEAM') ||
+            ((state.rankingsMode === 'recruiter' || state.rankingsMode === 'profiler') && row.level === 'RECRUITER');
+        if (!levelMatch) return false;
+        // <<< END: THIS IS THE FIX >>>
+
         const rowDate = new Date(row.date);
         const nameMatch = state.rankingsMode === 'team' ? row.team_name === entity.name : row.recruiter_name === entity.name;
         const dateMatch = rowDate >= fromDate && rowDate <= toDate;
