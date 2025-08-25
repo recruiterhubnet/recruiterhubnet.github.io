@@ -111,8 +111,6 @@ function calculateDataForEntityType(entityType) {
     const validTeams = [...new Set(allTeamData.map(d => d.team_name).filter(t => t && t !== 'Profilers'))];
 
     // --- RANK SCORE CALCULATION (Global) ---
-    // This section is now aligned with the filtering logic in rankingsView.js
-
     const entityTypeFilter = (row) => {
         if (entityType === 'profiler') {
             return row.team_name === 'Profilers';
@@ -126,12 +124,28 @@ function calculateDataForEntityType(entityType) {
         return rowDate >= fromDate && rowDate <= toDate;
     };
 
+    // <<< START: THIS IS THE NEW LOGIC >>>
+
+    // 1. Create a pre-filtered dataset from state.allData using the 'level' column
+    const leadRiskDataForLevel = appState.allData.filter(row => {
+        if (entityType === 'team') {
+            return row.level === 'TEAM';
+        }
+        // For 'profiler' (and recruiter, though not used here) we need 'RECRUITER'
+        return row.level === 'RECRUITER';
+    });
+
+    // 2. A standard filter for data that does NOT have a 'level' column
     const standardFilter = (row) => {
         if (!dateFilter(row)) return false;
         return row.company_name === 'ALL' && row.contract_type === 'ALL';
     };
     
-    const performanceDataForRanking = appState.allData.filter(row => standardFilter(row) && entityTypeFilter(row));
+    // 3. Apply the correct filters to the correct datasets
+    const performanceDataForRanking = leadRiskDataForLevel.filter(row => standardFilter(row) && entityTypeFilter(row));
+    
+    // <<< END: THIS IS THE NEW LOGIC >>>
+
     const mvrPspCdlRelatedData = appState.mvrPspCdlData.filter(row => standardFilter(row) && entityTypeFilter(row));
 
     const arrivalsFilter = (row) => {
@@ -142,11 +156,8 @@ function calculateDataForEntityType(entityType) {
     };
 
     const arrivalsRelatedData = [...appState.arrivalsData, ...appState.drugTestsData].filter(row => arrivalsFilter(row) && entityTypeFilter(row));
-
     const pastDueRelatedData = appState.recruiterData.filter(row => dateFilter(row) && entityTypeFilter(row));
-
     const profilerRelatedData = appState.profilerData.filter(row => dateFilter(row) && entityTypeFilter(row));
-
 
     const combinedData = [
         ...performanceDataForRanking,
@@ -937,6 +948,18 @@ function renderCompanyView() {
     
     const contractSpecificRanks = new Map();
     if (fromDate && toDate) {
+
+        // <<< START: THIS IS THE CRITICAL FIX FOR COMPANY VIEW >>>
+
+        // 1. Pre-filter the leadRisk data based on the current entity's required level, just like we did for the other views.
+        const leadRiskDataForLevel = appState.allData.filter(row => {
+            if (state.currentEntity === 'team') {
+                return row.level === 'TEAM';
+            }
+            // For 'profiler' and 'recruiter', we need 'RECRUITER' level data
+            return row.level === 'RECRUITER';
+        });
+
         visibleItems.forEach(item => {
             const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
         
@@ -947,6 +970,7 @@ function renderCompanyView() {
                 return dateMatch && entityTypeMatch;
             };
 
+            // 2. The standard filter remains simple. It will be applied to the pre-filtered data.
             const standardFilter = (row) => {
                 if (!matchesDateAndTeam(row)) return false;
                 const contractMatch = contractNames.includes(row.contract_type);
@@ -959,7 +983,8 @@ function renderCompanyView() {
                 return contractMatch;
             };
 
-            const filteredLeadRiskData = appState.allData.filter(standardFilter);
+            // 3. Build the combined data for ranking, using the pre-filtered 'leadRiskDataForLevel'.
+            const filteredLeadRiskData = leadRiskDataForLevel.filter(standardFilter);
             const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(standardFilter);
             const filteredPastDueData = appState.recruiterData.filter(matchesDateAndTeam);
             const filteredProfilerData = appState.profilerData.filter(matchesDateAndTeam);
@@ -975,11 +1000,14 @@ function renderCompanyView() {
                 ...filteredDrugTestsData
             ];
             
+            // <<< END: THIS IS THE CRITICAL FIX FOR COMPANY VIEW >>>
+
             const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
             const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
             contractSpecificRanks.set(item.id, ranksMap);
         });
     }
+
 
     const finalData = visibleEntities.map(entityRow => {
         const projections = {};
