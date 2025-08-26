@@ -124,27 +124,28 @@ function calculateDataForEntityType(entityType) {
         return rowDate >= fromDate && rowDate <= toDate;
     };
 
-    // <<< START: THIS IS THE NEW LOGIC >>>
+    // --- FIX START ---
 
-    // 1. Create a pre-filtered dataset from state.allData using the 'level' column
-    const leadRiskDataForLevel = appState.allData.filter(row => {
-        if (entityType === 'team') {
-            return row.level === 'TEAM';
-        }
-        // For 'profiler' (and recruiter, though not used here) we need 'RECRUITER'
-        return row.level === 'RECRUITER';
-    });
-
-    // 2. A standard filter for data that does NOT have a 'level' column
+    // 1. Re-define the standardFilter to be used by multiple data sources.
     const standardFilter = (row) => {
         if (!dateFilter(row)) return false;
         return row.company_name === 'ALL' && row.contract_type === 'ALL';
     };
-    
-    // 3. Apply the correct filters to the correct datasets
+
+    // 2. Pre-filter the leadRisk data to get the correct levels based on the mode.
+    const leadRiskDataForLevel = appState.allData.filter(row => {
+        if (entityType === 'team') {
+            // For Team mode, get both TEAM for main stats and RECRUITER for the Active Days calculation.
+            return row.level === 'TEAM' || row.level === 'RECRUITER';
+        }
+        // For Profiler mode, we only need RECRUITER level data.
+        return row.level === 'RECRUITER';
+    });
+
+    // 3. Now apply the standardFilter and entityTypeFilter to the pre-filtered data.
     const performanceDataForRanking = leadRiskDataForLevel.filter(row => standardFilter(row) && entityTypeFilter(row));
-    
-    // <<< END: THIS IS THE NEW LOGIC >>>
+
+    // --- FIX END ---
 
     const mvrPspCdlRelatedData = appState.mvrPspCdlData.filter(row => standardFilter(row) && entityTypeFilter(row));
 
@@ -679,43 +680,43 @@ if (fromDate && toDate) {
     visibleItems.forEach(item => {
         const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
 
-        // --- START: Corrected Data Aggregation Logic ---
+        // --- CORRECTED DATA AGGREGATION LOGIC ---
+        const entityTypeFilter = (row) => state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
+
+        const leadRiskDataForLevel = appState.allData.filter(row => {
+            const dateMatch = row.date && new Date(row.date) >= fromDate && new Date(row.date) <= toDate;
+            if (!dateMatch || !entityTypeFilter(row)) return false;
+            
+            if (state.currentEntity === 'team') {
+                return row.level === 'TEAM' || row.level === 'RECRUITER';
+            }
+            return row.level === 'RECRUITER';
+        });
+
+        const filteredLeadRiskData = leadRiskDataForLevel.filter(row => {
+            const contractMatch = contractNames.includes(row.contract_type);
+            const companyMatch = row.company_name === 'ALL';
+            return contractMatch && companyMatch;
+        });
+
         const matchesDateAndTeam = (row) => {
             const rowDate = row.date ? new Date(row.date) : null;
-            if (!rowDate) return false;
-            const dateMatch = rowDate >= fromDate && rowDate <= toDate;
-            const entityTypeMatch = state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
-            return dateMatch && entityTypeMatch;
+            return rowDate && rowDate >= fromDate && rowDate <= toDate && entityTypeFilter(row);
         };
+        
+        const arrivalsFilter = (row) => matchesDateAndTeam(row) && contractNames.includes(row.contract_type);
 
-        const standardFilter = (row) => {
-            if (!matchesDateAndTeam(row)) return false;
-            const contractMatch = contractNames.includes(row.contract_type);
-            return row.company_name === 'ALL' && contractMatch;
-        };
-
-        const arrivalsFilter = (row) => {
-            if (!matchesDateAndTeam(row)) return false;
-            const contractMatch = contractNames.includes(row.contract_type);
-            return contractMatch;
-        };
-
-        const filteredLeadRiskData = appState.allData.filter(standardFilter);
-        const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(standardFilter);
+        const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(row => matchesDateAndTeam(row) && contractNames.includes(row.contract_type) && row.company_name === 'ALL');
         const filteredPastDueData = appState.recruiterData.filter(matchesDateAndTeam);
         const filteredProfilerData = appState.profilerData.filter(matchesDateAndTeam);
         const filteredArrivalsData = appState.arrivalsData.filter(arrivalsFilter);
         const filteredDrugTestsData = appState.drugTestsData.filter(arrivalsFilter);
 
         const combinedDataForRank = [
-            ...filteredLeadRiskData,
-            ...filteredMvrPspCdlData,
-            ...filteredPastDueData,
-            ...filteredProfilerData,
-            ...filteredArrivalsData,
-            ...filteredDrugTestsData
+            ...filteredLeadRiskData, ...filteredMvrPspCdlData, ...filteredPastDueData,
+            ...filteredProfilerData, ...filteredArrivalsData, ...filteredDrugTestsData
         ];
-        // --- END: Corrected Data Aggregation Logic ---
+        // --- END: CORRECTED DATA AGGREGATION LOGIC ---
 
         const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
         const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
@@ -949,58 +950,46 @@ function renderCompanyView() {
     const contractSpecificRanks = new Map();
     if (fromDate && toDate) {
 
-        // <<< START: THIS IS THE CRITICAL FIX FOR COMPANY VIEW >>>
+        // --- CORRECTED DATA AGGREGATION LOGIC ---
+        const entityTypeFilter = (row) => state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
 
-        // 1. Pre-filter the leadRisk data based on the current entity's required level, just like we did for the other views.
         const leadRiskDataForLevel = appState.allData.filter(row => {
+            const dateMatch = row.date && new Date(row.date) >= fromDate && new Date(row.date) <= toDate;
+            if (!dateMatch || !entityTypeFilter(row)) return false;
+            
             if (state.currentEntity === 'team') {
-                return row.level === 'TEAM';
+                return row.level === 'TEAM' || row.level === 'RECRUITER';
             }
-            // For 'profiler' and 'recruiter', we need 'RECRUITER' level data
             return row.level === 'RECRUITER';
         });
 
         visibleItems.forEach(item => {
             const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
         
+            const filteredLeadRiskData = leadRiskDataForLevel.filter(row => {
+                const contractMatch = contractNames.includes(row.contract_type);
+                const companyMatch = row.company_name === 'ALL';
+                return contractMatch && companyMatch;
+            });
+
             const matchesDateAndTeam = (row) => {
                 const rowDate = row.date ? new Date(row.date) : null;
-                const dateMatch = rowDate >= fromDate && rowDate <= toDate;
-                const entityTypeMatch = state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
-                return dateMatch && entityTypeMatch;
+                return rowDate && rowDate >= fromDate && rowDate <= toDate && entityTypeFilter(row);
             };
 
-            // 2. The standard filter remains simple. It will be applied to the pre-filtered data.
-            const standardFilter = (row) => {
-                if (!matchesDateAndTeam(row)) return false;
-                const contractMatch = contractNames.includes(row.contract_type);
-                return row.company_name === 'ALL' && contractMatch;
-            };
-            
-            const arrivalsFilter = (row) => {
-                if (!matchesDateAndTeam(row)) return false;
-                const contractMatch = contractNames.includes(row.contract_type);
-                return contractMatch;
-            };
+            const arrivalsFilter = (row) => matchesDateAndTeam(row) && contractNames.includes(row.contract_type);
 
-            // 3. Build the combined data for ranking, using the pre-filtered 'leadRiskDataForLevel'.
-            const filteredLeadRiskData = leadRiskDataForLevel.filter(standardFilter);
-            const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(standardFilter);
+            const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(row => matchesDateAndTeam(row) && contractNames.includes(row.contract_type) && row.company_name === 'ALL');
             const filteredPastDueData = appState.recruiterData.filter(matchesDateAndTeam);
             const filteredProfilerData = appState.profilerData.filter(matchesDateAndTeam);
             const filteredArrivalsData = appState.arrivalsData.filter(arrivalsFilter);
             const filteredDrugTestsData = appState.drugTestsData.filter(arrivalsFilter);
 
             const combinedDataForRank = [
-                ...filteredLeadRiskData,
-                ...filteredMvrPspCdlData,
-                ...filteredPastDueData,
-                ...filteredProfilerData,
-                ...filteredArrivalsData,
-                ...filteredDrugTestsData
+                ...filteredLeadRiskData, ...filteredMvrPspCdlData, ...filteredPastDueData,
+                ...filteredProfilerData, ...filteredArrivalsData, ...filteredDrugTestsData
             ];
-            
-            // <<< END: THIS IS THE CRITICAL FIX FOR COMPANY VIEW >>>
+        // --- END: CORRECTED DATA AGGREGATION LOGIC ---
 
             const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
             const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
