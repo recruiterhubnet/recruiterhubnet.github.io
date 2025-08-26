@@ -1280,6 +1280,85 @@ function calculateActiveDays(dailyData, rules) {
     return activeDaysByRecruiter;
 }
 
+/**
+ * NEW FUNCTION: Calculates active days for teams based on recruiter participation.
+ * A day is active for a team if at least 35% of its recruiters were active.
+ * @param {Array} dailyRecruiterData - Pre-filtered raw data at the 'RECRUITER' level.
+ * @param {Object} rules - The active day rules from settings.
+ * @param {Map<string, Set<string>>} teamRecruiterMap - A map of team names to the Set of recruiters in that team.
+ * @returns {Map<string, number>} A map of team names to their total active day count.
+ */
+function calculateTeamActiveDays(dailyRecruiterData, rules, teamRecruiterMap) {
+    const dailyRecruiterActivity = new Map(); // Key: 'YYYY-MM-DD', Value: Set of active recruiter names
+
+    // Step 1: Find every individually active recruiter for each day
+    const aggregatedDailyStats = new Map();
+    dailyRecruiterData.forEach(day => {
+        const recruiter = day.recruiter_name;
+        if (!recruiter || !day.date) return;
+        const dateKey = day.date.toISOString().split('T')[0];
+        const recruiterDateKey = `${recruiter}|${dateKey}`;
+
+        if (!aggregatedDailyStats.has(recruiterDateKey)) {
+            aggregatedDailyStats.set(recruiterDateKey, {
+                date: day.date,
+                recruiter_name: recruiter,
+                outbound_calls: 0,
+                call_duration_seconds: 0,
+                outbound_sms: 0
+            });
+        }
+        const stats = aggregatedDailyStats.get(recruiterDateKey);
+        stats.outbound_calls += Number(day.outbound_calls) || 0;
+        stats.call_duration_seconds += Number(day.call_duration_seconds) || 0;
+        stats.outbound_sms += Number(day.outbound_sms) || 0;
+    });
+
+    aggregatedDailyStats.forEach(stats => {
+        const dayOfWeek = stats.date.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const applicableRules = isWeekend ? rules.weekends : rules.workdays;
+        const { calls, duration, sms, conditionsToMeet } = applicableRules;
+        const durationInSeconds = duration * 60;
+
+        let conditionsMet = 0;
+        if (stats.outbound_calls >= calls) conditionsMet++;
+        if (stats.call_duration_seconds >= durationInSeconds) conditionsMet++;
+        if (stats.outbound_sms >= sms) conditionsMet++;
+
+        if (conditionsMet >= conditionsToMeet) {
+            const dateKey = stats.date.toISOString().split('T')[0];
+            if (!dailyRecruiterActivity.has(dateKey)) {
+                dailyRecruiterActivity.set(dateKey, new Set());
+            }
+            dailyRecruiterActivity.get(dateKey).add(stats.recruiter_name);
+        }
+    });
+
+    // Step 2: For each day, check if each team met the 35% participation threshold
+    const activeDaysByTeam = new Map();
+    teamRecruiterMap.forEach((recruiters, teamName) => {
+        activeDaysByTeam.set(teamName, 0);
+        const totalRecruitersInTeam = recruiters.size;
+        if (totalRecruitersInTeam === 0) return;
+
+        dailyRecruiterActivity.forEach((activeRecruitersOnDay) => {
+            let activeCountInTeam = 0;
+            for (const recruiter of activeRecruitersOnDay) {
+                if (recruiters.has(recruiter)) {
+                    activeCountInTeam++;
+                }
+            }
+            const participation = (activeCountInTeam / totalRecruitersInTeam) * 100;
+            if (participation >= 35) {
+                activeDaysByTeam.set(teamName, activeDaysByTeam.get(teamName) + 1);
+            }
+        });
+    });
+
+    return activeDaysByTeam;
+}
+
 function applyExclusionRules(aggregatedData, settings, selectedCompanies, selectedContracts) {
     const { exclusionRules } = settings;
     if (!exclusionRules) return aggregatedData;
@@ -1347,7 +1426,39 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
     } = settings;
 
     const weights = mode === 'profiler' ? state.rankingWeightsProfiler : state.rankingWeights;
-    const activeDaysMap = calculateActiveDays(allFilteredData, settings.activeDayRules);
+    
+    // --- CORRECTED LOGIC START ---
+    let activeDaysMap;
+    let dataForAggregation;
+
+    if (mode === 'team') {
+        const recruiterLevelData = allFilteredData.filter(r => r.level === 'RECRUITER');
+        // All other data sources (drug tests, past due, etc.) do not have a 'level' property.
+        const otherDataSources = allFilteredData.filter(r => !r.hasOwnProperty('level'));
+        
+        // For the main stats, we use the 'TEAM' level data plus the other data sources.
+        dataForAggregation = allFilteredData.filter(r => r.level === 'TEAM').concat(otherDataSources);
+
+        // Build a map of each team and its members from the recruiter data.
+        const teamRecruiterMap = new Map();
+        recruiterLevelData.forEach(row => {
+            if (row.team_name && row.recruiter_name) {
+                if (!teamRecruiterMap.has(row.team_name)) {
+                    teamRecruiterMap.set(row.team_name, new Set());
+                }
+                teamRecruiterMap.get(row.team_name).add(row.recruiter_name);
+            }
+        });
+        
+        // Call the new function with only the recruiter-level data.
+        activeDaysMap = calculateTeamActiveDays(recruiterLevelData, settings.activeDayRules, teamRecruiterMap);
+
+    } else {
+        // For recruiter/profiler mode, the original logic is correct.
+        dataForAggregation = allFilteredData;
+        activeDaysMap = calculateActiveDays(allFilteredData, settings.activeDayRules);
+    }
+    // --- CORRECTED LOGIC END ---
     
     const aggregatedMap = new Map();
     const allEntities = new Map();
@@ -1356,13 +1467,15 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
     const selectedCompanies = forceCompanies || getSelectedValues(document.getElementById('rankingsCompanyFilterDropdown'));
     const selectedContracts = forceContracts || getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
 
-    allFilteredData.forEach(row => {
+    // Populate allEntities from the data that will be used for aggregation
+    dataForAggregation.forEach(row => {
         const name = effectiveMode === 'recruiter' ? row.recruiter_name : row.team_name;
         if (name && !allEntities.has(name)) {
             allEntities.set(name, row.team_name);
         }
     });
 
+    // Initialize the aggregatedMap with all potential entities
     allEntities.forEach((team, name) => {
         aggregatedMap.set(name, {
             name: name,
@@ -1375,7 +1488,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
             original_outbound_sms: 0, original_new_leads_assigned_on_date: 0,
             original_old_leads_assigned_on_date: 0, total_drug_tests: 0,
             onboarded: 0, mvr: 0, psp: 0, cdl: 0,
-            active_days: (effectiveMode === 'recruiter' || effectiveMode === 'profiler') ? (activeDaysMap.get(name) || 0) : 0,
+            active_days: activeDaysMap.get(name) || 0, // Get pre-calculated active days
             tte_values: [], daily_leads_reached: [], num_recruiters: 0,
             new_leads_assigned_on_date: 0, old_leads_assigned_on_date: 0,
             hot_leads_assigned: 0,
@@ -1390,7 +1503,17 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
         });
     });
 
-    allFilteredData.forEach(row => {
+    // Populate recruiter sets for teams from the full original dataset
+    if (mode === 'team') {
+        allFilteredData.filter(r => r.level === 'RECRUITER').forEach(row => {
+            if (row.team_name && aggregatedMap.has(row.team_name)) {
+                aggregatedMap.get(row.team_name).recruiters.add(row.recruiter_name);
+            }
+        });
+    }
+
+    // Now, aggregate the main metrics using the correct data level
+    dataForAggregation.forEach(row => {
         const key = effectiveMode === 'recruiter' ? row.recruiter_name : row.team_name;
         if (!aggregatedMap.has(key)) return;
     
@@ -1533,23 +1656,14 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
     });
 
     let aggregatedData = Array.from(aggregatedMap.values());
-
+    
     if (mode === 'team') {
         aggregatedData.forEach(teamEntry => {
-            let teamActiveDays = 0;
-            teamEntry.recruiters.forEach(recruiterName => {
-                teamActiveDays += activeDaysMap.get(recruiterName) || 0;
-            });
-            teamEntry.active_days = teamEntry.recruiters.size > 0 ? teamActiveDays / teamEntry.recruiters.size : 0;
             teamEntry.num_recruiters = teamEntry.recruiters.size;
         });
     }
 
-   // MODIFICATION: Pass company and contract context to the exclusion rules
-    // For now, we assume a single context. This will need enhancement if multiple contexts are processed at once.
-  // MODIFICATION START: Pass the entire filter selection to applyExclusionRules
   let rankedData = applyExclusionRules(aggregatedData, settings, selectedCompanies, selectedContracts);
-  // MODIFICATION END
 
     rankedData.forEach(entry => {
         const relevantTTEValues = entry.tte_values.filter(v => v !== null);
@@ -1736,7 +1850,6 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
         entry.rank = index + 1;
     });
 
-    // --- START: NEW DELEGATION % CALCULATION ---
     const totalFinalScore = rankedData.reduce((sum, entry) => sum + (entry.final_score || 0), 0);
 
     rankedData.forEach(entry => {
@@ -1746,7 +1859,6 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
             entry.delegation_percent = 0;
         }
     });
-    // --- END: NEW DELEGATION % CALCULATION ---
 
     return rankedData;
 }
@@ -1773,19 +1885,17 @@ function renderRankings() {
     const fromDate = fromDateStr ? new Date(fromDateStr) : null;
     const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
 
-    // --- START: NEW AND CORRECTED LOGIC ---
-
-    // 1. Pre-filter state.allData based on the 'level' column and the current view mode.
-    // This creates a clean dataset that we can work with.
+    // --- CORRECTED DATA FETCHING LOGIC ---
     const leadRiskDataForLevel = state.allData.filter(row => {
         if (state.rankingsMode === 'team') {
-            return row.level === 'TEAM';
+            // For Team mode, we need TEAM level data for general stats AND RECRUITER level data for our new Active Days calculation.
+            return row.level === 'TEAM' || row.level === 'RECRUITER';
         }
-        // For 'recruiter' and 'profiler' modes, we need 'RECRUITER' level data.
+        // For Recruiter and Profiler modes, we only need RECRUITER level data.
         return row.level === 'RECRUITER';
     });
+    // --- END CORRECTION ---
 
-    // 2. Define a universal filter for date and team that will be applied to ALL data sources.
     const matchesDateAndTeam = (row) => {
         const rowDate = row.date ? new Date(row.date) : null;
         const dateMatch = (!fromDate || !toDate) || (rowDate && (!fromDate || rowDate >= fromDate) && (!toDate || rowDate <= toDate));
@@ -1799,7 +1909,6 @@ function renderRankings() {
         return dateMatch && teamMatch;
     };
 
-    // 3. Define a standard filter for company and contract.
     const standardFilter = (row) => {
         const companyMatch = selectedCompanies.includes(row.company_name);
         const contractMatch = selectedContracts.includes(row.contract_type);
@@ -1809,12 +1918,11 @@ function renderRankings() {
     if (selectedCompanies.length === 0 || selectedContracts.length === 0) {
         state.rankedData = [];
     } else {
-        // 4. Apply the correct filters to the correct data sources.
-        
-        // Start with our pre-filtered data and then apply the other filters.
+        // --- CORRECTED DATA COMBINATION ---
+        // We start with the already-filtered lead risk data (which has the correct levels)
         const filteredLeadRiskData = leadRiskDataForLevel.filter(row => matchesDateAndTeam(row) && standardFilter(row));
         
-        // These other data sources do NOT have a 'level' column, so we only apply the standard filters to them.
+        // Then, we filter and add the other data sources, which don't have a 'level' property
         const filteredMvrPspCdlData = state.mvrPspCdlData.filter(row => matchesDateAndTeam(row) && standardFilter(row));
         const filteredPastDueData = state.recruiterData.filter(matchesDateAndTeam);
         const filteredProfilerData = state.profilerData.filter(matchesDateAndTeam);
@@ -1829,7 +1937,7 @@ function renderRankings() {
         const filteredArrivalsData = state.arrivalsData.filter(arrivalsFilter);
         const filteredDrugTestsData = state.drugTestsData.filter(arrivalsFilter);
 
-        // 5. Combine the correctly filtered data into the final rawData array.
+        // Combine all filtered data sources to pass to the calculation function
         const rawData = [
             ...filteredLeadRiskData,
             ...filteredMvrPspCdlData,
@@ -1842,8 +1950,6 @@ function renderRankings() {
         state.rankedData = calculateRankings(rawData, state.rankingsMode);
     }
     
-    // --- END: NEW AND CORRECTED LOGIC ---
-
     const { key, direction } = state.rankingsSortConfig;
     if (key) {
         const dir = direction === 'asc' ? 1 : -1;
