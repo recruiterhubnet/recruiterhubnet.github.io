@@ -74,9 +74,10 @@ function initializeApp() {
 
         state.workingHoursData = data.whData || [];
         state.arrivalsData = data.arrivalsData ? data.arrivalsData.map(row => ({
-            ...row, 
+            ...row,
             date: new Date(row.date),
-            total_arrivals: 1 
+            total_arrivals: 1,
+            tenure: row.tenure ? Number(row.tenure) : null
         })) : [];
         state.drugTestsData = data.drugTestsData ? data.drugTestsData.map(row => ({
             ...row,
