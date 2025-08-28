@@ -269,18 +269,20 @@ function openRankingsSettingsModal() {
     const tteSourceProfilerContainer = document.getElementById('tteSourceProfilerContainer');
     const leadsReachedSourceProfilerContainer = document.getElementById('leadsReachedSourceProfilerContainer');
 
+    const tenureAccordion = document.getElementById('tenureSettingsAccordion');
+
     if (isProfilerMode) {
         tteSourceContainer.style.display = 'none';
         leadsReachedSourceContainer.style.display = 'none';
         tteSourceProfilerContainer.style.display = 'block';
         leadsReachedSourceProfilerContainer.style.display = 'block';
-        document.getElementById('tteLeadTypeContainer').style.display = 'block';
-        document.getElementById('leadsReachedLeadTypeContainer').style.display = 'block';
+        tenureAccordion.style.display = 'none'; // Hide Tenure settings for Profilers
     } else {
         tteSourceContainer.style.display = 'block';
         leadsReachedSourceContainer.style.display = 'block';
         tteSourceProfilerContainer.style.display = 'none';
         leadsReachedSourceProfilerContainer.style.display = 'none';
+        tenureAccordion.style.display = 'block'; // Show Tenure settings for Recruiters/Teams
     }
 
     loadSettingsToModal();
@@ -292,6 +294,7 @@ function loadSettingsToModal() {
     const settings = isProfilerMode ? state.rankingSettingsProfiler : state.rankingSettings;
 
     const { 
+        tenureSettings,
         activeDayRules, ttePValue, tteLeadType, tteSource, tteSourceProfiler,
         leadsReachedLeadType, leadsReachedSource, leadsReachedSourceProfiler,
         callSmsDataSource, medianCallDurationSource
@@ -310,6 +313,11 @@ function loadSettingsToModal() {
 
     document.getElementById('callSmsDataSource').value = callSmsDataSource || 'all';
     document.getElementById('medianCallDurationSource').value = medianCallDurationSource || 'all_leads';
+    // --- Load Tenure Settings ---
+    if (settings.tenureSettings) {
+        document.getElementById('tenureExcludeDays').value = tenureSettings.excludeLastDays;
+        document.getElementById('tenureLookbackDays').value = tenureSettings.lookbackDays;
+    }
 
     // --- Load TTE & Leads Reached Settings ---
     document.getElementById('tteSource').value = tteSource || 'standard';
@@ -540,6 +548,11 @@ function saveRankingsSettings() {
     document.querySelectorAll('.per-lead-checkbox').forEach(checkbox => {
         settingsToUpdate.perLeadMetrics[checkbox.dataset.key] = checkbox.checked;
     });
+    // Part 2a: Save Tenure settings
+    if (settingsToUpdate.tenureSettings) {
+        settingsToUpdate.tenureSettings.excludeLastDays = parseInt(document.getElementById('tenureExcludeDays').value, 10) || 0;
+        settingsToUpdate.tenureSettings.lookbackDays = parseInt(document.getElementById('tenureLookbackDays').value, 10) || 60;
+    }
     
     // Part 2: Save settings from the new "Exclusion Rules" UI
     const editorContainer = document.querySelector('#exclusionRuleEditorPanel .exclusion-rule-set');
@@ -778,7 +791,8 @@ function openRankingWeightsModal(weightsToLoad = null) {
         { key: 'median_call_duration_percentile', label: 'Median Call Duration', icon: 'fa-headset' },
         { key: 'profiles_completed_percentile', label: 'Profiles Closed', icon: 'fa-id-card' },
         { key: 'documents_score', title: 'Documents Score', icon: 'fa-file-alt' },
-        { key: 'past_due_ratio_percentile', label: 'Past Due Ratio', icon: 'fa-calendar-times' }
+        { key: 'past_due_ratio_percentile', label: 'Past Due Ratio', icon: 'fa-calendar-times' },
+        { key: 'tenure_percentile', label: 'Tenure', icon: 'fa-user-tie' }
     ];
     
     const arrivalsChildren = isProfilerMode ? [
@@ -1500,6 +1514,8 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
             profiler_note_day_count: 0,
             median_time_to_profile_values: [],
             median_call_duration_values: [],
+        
+            median_tenure: null,
         });
     });
 
@@ -1545,6 +1561,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
                     });
                 });
             });
+       
         } else if (row.hasOwnProperty('total_drug_tests')) {
             const typeMatch = !drugTestType || drugTestType === 'All Types' || row.drug_test_type === drugTestType;
             if (typeMatch) entry.total_drug_tests += Number(row.total_drug_tests) || 0;
@@ -1663,6 +1680,45 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
         });
     }
 
+
+// --- START: Tenure Calculation based on Lookback Period (Recruiter/Team Only) ---
+if (mode !== 'profiler') {
+    const toDateStr = document.getElementById('rankingsDateToFilter').value;
+    // Use the 'To' date from the filter, or find the latest date in all arrivals data as a fallback
+    const latestArrivalDate = new Date(Math.max(...state.arrivalsData.map(d => d.date)));
+    const endDate = toDateStr ? new Date(toDateStr + 'T23:59:59') : latestArrivalDate;
+
+    if (!isNaN(endDate.getTime())) {
+        const tenureSettings = state.rankingSettings.tenureSettings; // Directly use recruiter/team settings
+        const excludeDays = tenureSettings.excludeLastDays || 0;
+        const lookbackDays = tenureSettings.lookbackDays || 60;
+
+        const lookbackStartDate = new Date(endDate);
+        lookbackStartDate.setDate(lookbackStartDate.getDate() - excludeDays);
+
+        const lookbackEndDate = new Date(lookbackStartDate);
+        lookbackEndDate.setDate(lookbackEndDate.getDate() - lookbackDays);
+
+        aggregatedData.forEach(entry => {
+            const tenureArrivals = state.arrivalsData.filter(arrival => {
+                const nameMatch = effectiveMode === 'recruiter' ? arrival.recruiter_name === entry.name : arrival.team_name === entry.name;
+                return nameMatch && arrival.date >= lookbackEndDate && arrival.date <= lookbackStartDate;
+            });
+
+            const validTenureValues = tenureArrivals.map(a => a.tenure).filter(t => t !== null && isFinite(t));
+
+            if (validTenureValues.length > 0) {
+                const sortedTenure = [...validTenureValues].sort((a, b) => a - b);
+                const midTenure = Math.floor(sortedTenure.length / 2);
+                entry.median_tenure = sortedTenure.length % 2 === 0 ? (sortedTenure[midTenure - 1] + sortedTenure[midTenure]) / 2 : sortedTenure[midTenure];
+            } else {
+                entry.median_tenure = null;
+            }
+        });
+    }
+}
+// --- END: Tenure Calculation ---
+
   let rankedData = applyExclusionRules(aggregatedData, settings, selectedCompanies, selectedContracts);
 
     rankedData.forEach(entry => {
@@ -1717,6 +1773,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
             } else {
                 entry.median_call_duration = null;
             }
+           
         
         entry.drug_tests_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.total_drug_tests / entry.hot_leads_assigned) : 0;
         entry.onboarded_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.onboarded / entry.hot_leads_assigned) : 0;
@@ -1765,6 +1822,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
     const allProfilerNoteLenghts = rankedData.map(d => d.profiler_note_lenght_all).sort((a, b) => a - b);
     const allMedianTimeToProfile = rankedData.map(d => d.median_time_to_profile).filter(v => v !== null).sort((a, b) => a - b);
     const allMedianCallDurations = rankedData.map(d => d.median_call_duration).filter(v => v !== null).sort((a, b) => a - b);
+    const allTenureValues = rankedData.map(d => d.median_tenure).filter(v => v !== null).sort((a, b) => a - b);
 
     rankedData.forEach(entry => {
         entry.outbound_calls_percentile = getPercentile(entry.outbound_calls, allOutboundCalls);
@@ -1788,6 +1846,7 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
         entry.profiler_note_lenght_percentile = getPercentile(entry.profiler_note_lenght_all, allProfilerNoteLenghts);
         entry.median_time_to_profile_percentile = getPercentile(entry.median_time_to_profile, allMedianTimeToProfile, true);
         entry.median_call_duration_percentile = getPercentile(entry.median_call_duration, allMedianCallDurations); 
+        entry.tenure_percentile = getPercentile(entry.median_tenure, allTenureValues);
 
         const w = weights;
         const callsWeights = w.calls_score || {};
@@ -1825,15 +1884,16 @@ export function calculateRankings(allFilteredData, mode, forceCompanies = null, 
                                       entry.profiles_score * (complianceWeights.profiles_score || 0) +
                                       entry.documents_score * (complianceWeights.documents_score || 0) +
                                       entry.median_call_duration_percentile * (complianceWeights.median_call_duration_percentile || 0)) / 100;
-        } else { // Recruiter or Team mode
-            entry.compliance_score = (entry.tte_percentile * (complianceWeights.tte_percentile || 0) +
-                                      entry.leads_reached_percentile * (complianceWeights.leads_reached_percentile || 0) +
-                                      entry.documents_score * (complianceWeights.documents_score || 0) +
-                                      entry.past_due_ratio_percentile * (complianceWeights.past_due_ratio_percentile || 0) +
-                                      entry.profiles_completed_percentile * (complianceWeights.profiles_completed_percentile || 0) +
-                                      entry.median_call_duration_percentile * (complianceWeights.median_call_duration_percentile || 0)) / 100;
-            entry.profiles_score = 0;
-        }
+                                    } else { // Recruiter or Team mode
+                                        entry.compliance_score = (entry.tte_percentile * (complianceWeights.tte_percentile || 0) +
+                                                                  entry.leads_reached_percentile * (complianceWeights.leads_reached_percentile || 0) +
+                                                                  entry.documents_score * (complianceWeights.documents_score || 0) +
+                                                                  entry.past_due_ratio_percentile * (complianceWeights.past_due_ratio_percentile || 0) +
+                                                                  entry.profiles_completed_percentile * (complianceWeights.profiles_completed_percentile || 0) +
+                                                                  entry.median_call_duration_percentile * (complianceWeights.median_call_duration_percentile || 0) +
+                                                                  entry.tenure_percentile * (complianceWeights.tenure_percentile || 0)) / 100;
+                                        entry.profiles_score = 0;
+                                    }
 
         entry.arrivals_score = (entry.total_drug_tests_percentile * (arrivalsWeights.total_drug_tests_percentile || 0) +
                                 entry.onboarded_percentile * (arrivalsWeights.onboarded_percentile || 0) +
@@ -2023,7 +2083,8 @@ function renderRankingsHeaders() {
         total_drug_tests: perLead.total_drug_tests ? "The average number of completed drug tests per lead assigned. Higher is better." : "The total number of completed drug tests. The specific test types included can be configured in Advanced Settings. Higher is better.",
         onboarded: perLead.onboarded ? "The average number of successful arrivals/onboardings per lead assigned. Higher is better." : "The total number of successful arrivals/onboardings. Higher is better.",
         drug_tests_per_hot_lead: "The average number of drug tests per hot lead assigned. Higher is better.",
-        onboarded_per_hot_lead: "The average number of successful onboardings per hot lead assigned. Higher is better."
+        onboarded_per_hot_lead: "The average number of successful onboardings per hot lead assigned. Higher is better.",
+        median_tenure: "The median tenure (in days) of drivers who arrived within the date range defined in Advanced Settings. Higher is better."
     };
 
     const headerConfig = {
@@ -2061,7 +2122,8 @@ function renderRankingsHeaders() {
                     { label: 'PROFILE COMPLETION', columns: ['profiles_completed'], hidden: mode === 'profiler' },
                     { label: 'PROFILE COMPLETION', scoreKey: 'profiles_score', columns: ['profiles_profiled', 'profiles_completed'], hidden: mode !== 'profiler' },
                     { label: 'DOCUMENTS', scoreKey: 'documents_score', columns: ['mvr', 'psp', 'cdl'] },
-                    { label: 'PAST DUE', columns: ['past_due_ratio'], hidden: mode === 'profiler' }
+                    { label: 'PAST DUE', columns: ['past_due_ratio'], hidden: mode === 'profiler' },
+                    { label: 'TENURE', columns: ['median_tenure'], hidden: mode === 'profiler' }
                 ]
             },
             {
@@ -2105,6 +2167,7 @@ function renderRankingsHeaders() {
             cdl: { label: 'CDL', type: 'number' },
             profiler_note_lenght_all: { label: 'Note Length', type: 'number' },
             median_time_to_profile: { label: 'Time', type: 'number' },
+            median_tenure: { label: 'Tenure', type: 'number' },
         }
     };
 
@@ -2259,7 +2322,7 @@ function renderRankingsTable(data) {
         'mvr', 'mvr_percentile',
         'psp', 'psp_percentile',
         'cdl', 'cdl_percentile',
-        ...(mode !== 'profiler' ? ['past_due_ratio', 'past_due_ratio_percentile'] : []),
+        ...(mode !== 'profiler' ? ['past_due_ratio', 'past_due_ratio_percentile', 'median_tenure', 'tenure_percentile'] : []),
         'arrivals_score',
         'total_drug_tests', 'total_drug_tests_percentile',
         'onboarded', 'onboarded_percentile',
@@ -2325,7 +2388,7 @@ function renderRankingsTable(data) {
 
             if (key === 'effort_score' || key === 'compliance_score' || key === 'arrivals_score' || key === 'final_score') {
                 cellClass += ' border-l-main';
-            } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'median_call_duration', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
+            } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'median_call_duration', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'median_tenure', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
                 cellClass += ' border-l-sub-group';
             }
 
@@ -2371,7 +2434,7 @@ function renderRankingsFooter(data) {
         'mvr', 'mvr_percentile',
         'psp', 'psp_percentile',
         'cdl', 'cdl_percentile',
-        ...(mode !== 'profiler' ? ['past_due_ratio', 'past_due_ratio_percentile'] : []),
+        ...(mode !== 'profiler' ? ['past_due_ratio', 'past_due_ratio_percentile', 'median_tenure', 'tenure_percentile'] : []),
         'arrivals_score',
         'total_drug_tests', 'total_drug_tests_percentile',
         'onboarded', 'onboarded_percentile',
@@ -2446,7 +2509,7 @@ function renderRankingsFooter(data) {
 
         if (key === 'effort_score' || key === 'compliance_score' || key === 'arrivals_score' || key === 'final_score') {
             cellClasses += ' border-l-main';
-        } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'median_call_duration', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
+        } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'median_call_duration', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'median_tenure', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
             cellClasses += ' border-l-sub-group';
         }
 
