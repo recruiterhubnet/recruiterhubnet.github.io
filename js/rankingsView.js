@@ -544,15 +544,26 @@ function saveRankingsSettings() {
         settingsToUpdate.leadsReachedSource = document.getElementById('leadsReachedSource').value;
     }
     
-    settingsToUpdate.perLeadMetrics = settingsToUpdate.perLeadMetrics || {};
+    // Fix for perLeadMetrics potentially being a string
+    if (typeof settingsToUpdate.perLeadMetrics !== 'object' || settingsToUpdate.perLeadMetrics === null) {
+        settingsToUpdate.perLeadMetrics = {};
+    }
     document.querySelectorAll('.per-lead-checkbox').forEach(checkbox => {
         settingsToUpdate.perLeadMetrics[checkbox.dataset.key] = checkbox.checked;
     });
-    // Part 2a: Save Tenure settings
-    if (settingsToUpdate.tenureSettings) {
+    
+    // --- START: THIS IS THE FIX FOR THE NEW ERROR ---
+    // This check handles both profiler mode (where tenureSettings might not exist)
+    // and recruiter mode (where it might be corrupted into a string).
+    if (settingsToUpdate.hasOwnProperty('tenureSettings')) {
+        // Ensure it's an object before saving. If it was a corrupted string, it gets reset.
+        if (typeof settingsToUpdate.tenureSettings !== 'object' || settingsToUpdate.tenureSettings === null) {
+            settingsToUpdate.tenureSettings = {};
+        }
         settingsToUpdate.tenureSettings.excludeLastDays = parseInt(document.getElementById('tenureExcludeDays').value, 10) || 0;
         settingsToUpdate.tenureSettings.lookbackDays = parseInt(document.getElementById('tenureLookbackDays').value, 10) || 60;
     }
+    // --- END: THIS IS THE FIX FOR THE NEW ERROR ---
     
     // Part 2: Save settings from the new "Exclusion Rules" UI
     const editorContainer = document.querySelector('#exclusionRuleEditorPanel .exclusion-rule-set');
@@ -1001,32 +1012,65 @@ export function initializeRankingsView() {
     // MODIFICATION START: Add data migration logic for settings
     const migrateAndLoadSettings = (storageKey, defaultStateKey) => {
         const savedData = localStorage.getItem(storageKey);
+        // Get a deep copy of the default settings to use as a clean base
+        const defaultSettings = JSON.parse(JSON.stringify(state[defaultStateKey]));
+    
         if (savedData && savedData !== 'undefined') {
             try {
                 let parsedSettings = JSON.parse(savedData);
-
-                // Check if the loaded exclusionRules is an array (the old format)
+    
+                // --- Start Robust Merging for Nested Objects ---
+    
+                // Safely merge activeDayRules to prevent missing nested properties
+                if (parsedSettings.activeDayRules) {
+                    parsedSettings.activeDayRules = {
+                        ...defaultSettings.activeDayRules,
+                        ...parsedSettings.activeDayRules,
+                        workdays: {
+                            ...defaultSettings.activeDayRules.workdays,
+                            ...(parsedSettings.activeDayRules.workdays || {})
+                        },
+                        weekends: {
+                            ...defaultSettings.activeDayRules.weekends,
+                            ...(parsedSettings.activeDayRules.weekends || {})
+                        }
+                    };
+                }
+    
+                // Migrate old exclusionRules array format to the new object format
                 if (Array.isArray(parsedSettings.exclusionRules)) {
                     console.log(`Migrating old exclusion rules for ${storageKey}...`);
-                    const oldRules = parsedSettings.exclusionRules;
-                    const oldLogic = parsedSettings.exclusionLogic || 'AND';
-                    
-                    // Convert to the new object structure
                     parsedSettings.exclusionRules = {
-                        default: { logic: oldLogic, rules: oldRules },
+                        default: {
+                            logic: parsedSettings.exclusionLogic || 'AND',
+                            rules: parsedSettings.exclusionRules
+                        },
                         specific: []
                     };
-                    delete parsedSettings.exclusionLogic; // Clean up old property
+                    delete parsedSettings.exclusionLogic;
                 }
-                
-                state[defaultStateKey] = { ...state[defaultStateKey], ...parsedSettings };
-
+                // Safely merge the exclusionRules object
+                else if (parsedSettings.exclusionRules) {
+                     parsedSettings.exclusionRules = {
+                        ...defaultSettings.exclusionRules,
+                        ...parsedSettings.exclusionRules
+                     }
+                }
+    
+                // --- End Robust Merging ---
+    
+                // Apply the processed saved settings over the defaults
+                state[defaultStateKey] = { ...defaultSettings, ...parsedSettings };
+    
             } catch (e) {
-                console.error(`Failed to parse ${storageKey} from localStorage. Resetting.`, e);
-                localStorage.setItem(storageKey, JSON.stringify(state[defaultStateKey]));
+                console.error(`Failed to parse or merge settings from ${storageKey}. Resetting to defaults.`, e);
+                // If anything goes wrong, revert to a clean default state
+                state[defaultStateKey] = defaultSettings;
+                localStorage.setItem(storageKey, JSON.stringify(defaultSettings));
             }
         } else {
-            localStorage.setItem(storageKey, JSON.stringify(state[defaultStateKey]));
+            // If no settings are saved, initialize them in localStorage
+            localStorage.setItem(storageKey, JSON.stringify(defaultSettings));
         }
     };
 
@@ -1277,6 +1321,13 @@ function calculateActiveDays(dailyData, rules) {
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const applicableRules = isWeekend ? rules.weekends : rules.workdays;
 
+        // --- START: THIS IS THE FIX ---
+        if (!applicableRules) {
+            console.warn("Active day rules are missing or corrupt in settings. Skipping calculation for this entry.");
+            return; // Safely skip this iteration if rules are not defined
+        }
+        // --- END: THIS IS THE FIX ---
+
         const { calls, duration, sms, conditionsToMeet } = applicableRules;
         const durationInSeconds = duration * 60;
 
@@ -1332,6 +1383,14 @@ function calculateTeamActiveDays(dailyRecruiterData, rules, teamRecruiterMap) {
         const dayOfWeek = stats.date.getDay();
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const applicableRules = isWeekend ? rules.weekends : rules.workdays;
+
+        // --- START: THIS IS THE FIX ---
+        if (!applicableRules) {
+            console.warn("Active day rules are missing or corrupt in settings for team calculation. Skipping calculation for this entry.");
+            return; // Safely skip this iteration if rules are not defined
+        }
+        // --- END: THIS IS THE FIX ---
+
         const { calls, duration, sms, conditionsToMeet } = applicableRules;
         const durationInSeconds = duration * 60;
 
