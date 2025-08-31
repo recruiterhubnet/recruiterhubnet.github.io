@@ -460,100 +460,131 @@ function renderColumnManagement() {
     visibilityContainer.innerHTML = contractsHtml + (groupsHtml ? `<hr class="border-gray-700 my-3">${groupsHtml}` : '');
 }
 
-function renderActivationMatrix(entityType = 'team') {
-    const container = document.getElementById('activationMatrixContainer');
-    const entities = entityType === 'team' ? state.activation.teams : state.activation.profilers;
-    
-    const allCompanies = [...new Set(appState.allData.map(d => d.company_name).filter(Boolean))]
-        .filter(c => c.toUpperCase() !== 'ALL');
-        
-    const allContracts = state.settings.contracts;
-    const allGroups = state.settings.groups;
+function renderActivationMatrix() {
+    const managerContainer = document.getElementById('activationManagerContainer');
+    if (!managerContainer) return;
 
-    if (entities.length === 0 || allCompanies.length === 0) {
-        container.innerHTML = `<p class="text-gray-500 text-sm">Not enough data to build the matrix.</p>`;
-        return;
-    }
+    const entityType = document.querySelector('.matrix-entity-switcher.active')?.dataset.entity || 'team';
+    const entities = entityType === 'team' ? state.activation.teams : state.activation.profilers;
+    const allCompanies = [...new Set(appState.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))];
 
     if (!state.activation.selectedCompany || !allCompanies.includes(state.activation.selectedCompany)) {
-        state.activation.selectedCompany = allCompanies[0];
+        state.activation.selectedCompany = allCompanies.length > 0 ? allCompanies[0] : null;
     }
     const selectedCompany = state.activation.selectedCompany;
-    
-    if (!state.activation.matrix[selectedCompany]) {
-        state.activation.matrix[selectedCompany] = {};
+
+    const companyTabsContainer = managerContainer.querySelector('.company-switcher-tabs');
+    if (companyTabsContainer) {
+        companyTabsContainer.innerHTML = allCompanies.map(company => `
+            <button class="company-tab-btn ${company === selectedCompany ? 'active' : ''}" data-company="${company}">
+                ${company}
+            </button>
+        `).join('');
     }
-    const companyMatrix = state.activation.matrix[selectedCompany];
 
-    const switcherHTML = `
-        <div class="company-switcher-tabs">
-            ${allCompanies.map(company => `
-                <button class="company-tab-btn ${company === selectedCompany ? 'active' : ''}" data-company="${company}">
-                    ${company}
-                </button>
-            `).join('')}
-        </div>
-    `;
+    const entityListContainer = document.getElementById('entity-list-container');
+    const searchInput = document.getElementById('entitySearchInput');
+    const searchTerm = (searchInput.value || '').toLowerCase();
+    const showInactive = document.getElementById('showInactiveCheckbox').checked;
 
-    const actionsHTML = `
-        <div class="matrix-global-actions">
-            <button class="matrix-action-btn" data-action="select-all-visible">Select All Visible</button>
-            <button class="matrix-action-btn" data-action="deselect-all-visible">Deselect All Visible</button>
-        </div>
-    `;
+    if (entityListContainer && selectedCompany) {
+        const companyMatrix = state.activation.matrix[selectedCompany] || {};
+        const allItems = [...state.settings.contracts, ...state.settings.groups].filter(item => item.name.toUpperCase() !== 'ALL');
 
-    let tableHTML = '';
-    if (selectedCompany) {
-        const companyContracts = allContracts;
-        const companyGroups = allGroups.filter(g =>
-            g.contractIds.some(cId => {
-                const contractInGroup = allContracts.find(c => c.id === cId);
-                return contractInGroup && companyContracts.some(cc => cc.name === contractInGroup.name);
-            })
-        );
-        const companyItems = [...companyContracts, ...companyGroups].filter(item => item.name.toUpperCase() !== 'ALL');
+        let filteredEntities = entities.map(entity => {
+            const activeCount = allItems.reduce((count, item) => {
+                const matrixKey = `${entity.id}_${item.id}`;
+                return companyMatrix[matrixKey] === true ? count + 1 : count;
+            }, 0);
+            return { ...entity, activeCount };
+        });
 
-        if (companyItems.length > 0) {
-            tableHTML += '<table><thead><tr><th>Entity</th>';
-            companyItems.forEach(item => {
-                tableHTML += `<th class="clickable-header" data-action="toggle-column" data-item-id="${item.id}" title="Click to toggle column">${item.name}</th>`;
-            });
-            tableHTML += '</tr></thead><tbody>';
+        if (!showInactive) {
+            filteredEntities = filteredEntities.filter(e => e.activeCount > 0);
+        }
+        if (searchTerm) {
+            filteredEntities = filteredEntities.filter(e => e.name.toLowerCase().includes(searchTerm));
+        }
 
-            entities.forEach(entity => {
-                tableHTML += `<tr><td class="clickable-header" data-action="toggle-row" data-entity-id="${entity.id}" title="Click to toggle row">${entity.name}</td>`;
-                companyItems.forEach(item => {
-                    const matrixKey = `${entity.id}_${item.id}`;
-                    const isChecked = companyMatrix[matrixKey] !== false;
-                    if (companyMatrix[matrixKey] === undefined) {
-                        companyMatrix[matrixKey] = true;
-                    }
-                    tableHTML += `
-                        <td class="matrix-cell">
-                            <label class="toggle-switch">
-                                <input type="checkbox" data-key="${matrixKey}" class="activation-toggle" ${isChecked ? 'checked' : ''}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </td>
-                    `;
-                });
-                tableHTML += '</tr>';
-            });
-            tableHTML += '</tbody></table>';
+        entityListContainer.innerHTML = filteredEntities.map(entity => `
+            <div class="entity-list-item ${state.activation.selectedEntityId === entity.id ? 'selected' : ''}" data-entity-id="${entity.id}">
+                <span class="entity-name">${entity.name}</span>
+                <span class="entity-active-count">${entity.activeCount}</span>
+            </div>
+        `).join('');
+    }
+
+    const detailsPanel = document.getElementById('activation-details-panel');
+    const detailsPanelContent = detailsPanel?.querySelector('.p-4');
+    const bulkActions = document.getElementById('activation-bulk-actions');
+
+    if (detailsPanel && detailsPanelContent) {
+        const selectedEntity = entities.find(e => e.id === state.activation.selectedEntityId);
+        if (selectedEntity && selectedCompany) {
+            renderDetailsPanel(selectedEntity, selectedCompany);
         } else {
-            tableHTML = `<p class="text-gray-500 text-sm p-4">No contracts or groups are associated with ${selectedCompany}.</p>`;
+            detailsPanelContent.innerHTML = `<p class="text-gray-500 text-center mt-8">Select a ${entityType} from the list to manage contracts.</p>`;
+            if (bulkActions) {
+                bulkActions.style.display = 'none'; // Hide actions when no entity is selected
+            }
         }
     }
-    
-    container.innerHTML = `
-        <div class="matrix-controls">
-            ${actionsHTML}
-            ${switcherHTML}
+}
+
+function renderDetailsPanel(entity, company) {
+    const detailsPanel = document.getElementById('activation-details-panel').querySelector('.p-4');
+    const bulkActions = document.getElementById('activation-bulk-actions');
+    const companyMatrix = state.activation.matrix[company] || {};
+    const allItems = [...state.settings.contracts, ...state.settings.groups].filter(item => item.name.toUpperCase() !== 'ALL');
+
+    const activeItems = allItems.filter(item => {
+        const matrixKey = `${entity.id}_${item.id}`;
+        return companyMatrix[matrixKey] === true;
+    });
+
+    const availableItems = allItems.filter(item => !activeItems.find(active => active.id === item.id));
+
+    detailsPanel.innerHTML = `
+        <div class="details-header">
+            Editing for: <span class="entity-highlight">${entity.name}</span>
         </div>
-        <div class="matrix-table-wrapper">
-            ${tableHTML || `<p class="text-gray-500 text-sm p-4">Select a company to view the matrix.</p>`}
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Add Contracts / Groups</label>
+                <div class="multi-select-container">
+                    <button class="modal-input w-full text-left" data-action="toggle-dropdown">Select to add...</button>
+                    <div class="multi-select-dropdown">
+                        <input type="text" class="multi-select-search-input" placeholder="Search contracts...">
+                        <div class="multi-select-list">
+                            ${availableItems.map(item => `
+                                <label>
+                                    <input type="checkbox" data-item-id="${item.id}" class="h-4 w-4 rounded border-gray-500 bg-gray-800 text-blue-600 focus:ring-blue-500 mr-2">
+                                    ${item.name}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Active Contracts</label>
+                <div class="active-contracts-container">
+                    ${activeItems.map(item => `
+                        <div class="contract-pill">
+                            <span>${item.name}</span>
+                            <button class="contract-pill-remove" data-item-id="${item.id}" data-action="remove-contract">&times;</button>
+                        </div>
+                    `).join('')}
+                    ${activeItems.length === 0 ? `<span class="text-gray-500 text-sm">No active contracts for this company.</span>` : ''}
+                </div>
+            </div>
         </div>
     `;
+    
+    // Show the bulk action buttons
+    if (bulkActions) {
+        bulkActions.style.display = 'flex';
+    }
 }
 
 function renderTable() {
@@ -1350,17 +1381,79 @@ if (delegationTable) {
         if (matrixSwitcher) {
             settingsModal.querySelectorAll('.matrix-entity-switcher').forEach(btn => btn.classList.remove('active'));
             matrixSwitcher.classList.add('active');
-            renderActivationMatrix(matrixSwitcher.dataset.entity);
+            state.activation.selectedEntityId = null; // Deselect entity when switching views
+            renderActivationMatrix();
             return;
         }
 
+        // Add an event listener for the new checkbox and the search input
+        const searchInput = target.closest('#entitySearchInput');
+        const inactiveCheckbox = target.closest('#showInactiveCheckbox');
+        if (searchInput || inactiveCheckbox) {
+            renderActivationMatrix();
+            return;
+        }
+        
         const companyTabBtn = target.closest('.company-tab-btn');
         if (companyTabBtn) {
             state.activation.selectedCompany = companyTabBtn.dataset.company;
-            const currentEntityType = document.querySelector('.matrix-entity-switcher.active').dataset.entity;
-            renderActivationMatrix(currentEntityType);
+            renderActivationMatrix();
             return;
         }
+
+        const entityItem = target.closest('.entity-list-item');
+        if (entityItem) {
+            state.activation.selectedEntityId = entityItem.dataset.entityId;
+            renderActivationMatrix(); // Re-render the whole view to update selection and details
+            return;
+        }
+
+        const detailsPanel = target.closest('#activation-details-panel');
+        if (detailsPanel) {
+            const actionTarget = target.closest('[data-action]');
+            if (actionTarget) {
+                const action = actionTarget.dataset.action;
+                const company = state.activation.selectedCompany;
+                const entityId = state.activation.selectedEntityId;
+
+                if (action === 'remove-contract') {
+                    const itemId = actionTarget.dataset.itemId;
+                    const matrixKey = `${entityId}_${itemId}`;
+                    state.activation.matrix[company][matrixKey] = false;
+                    renderActivationMatrix();
+                }
+
+                if (action === 'toggle-dropdown') {
+                    actionTarget.nextElementSibling.classList.toggle('visible');
+                }
+            }
+        }
+        
+        const bulkActionPanel = target.closest('#activation-bulk-actions');
+        if (bulkActionPanel) {
+            const actionTarget = target.closest('[data-action]');
+            if(actionTarget) {
+                const action = actionTarget.dataset.action;
+                const shouldBeActive = action === 'select-all-visible';
+                const company = state.activation.selectedCompany;
+                const entityId = state.activation.selectedEntityId;
+
+                // Get only the items that are currently visible in the columns tab
+                const visibleItems = [...state.settings.contracts, ...state.settings.groups]
+                    .filter(item => state.settings.visibility[item.id] && item.name.toUpperCase() !== 'ALL');
+                
+                if (company && entityId && state.activation.matrix[company]) {
+                    visibleItems.forEach(item => {
+                        const matrixKey = `${entityId}_${item.id}`;
+                        state.activation.matrix[company][matrixKey] = shouldBeActive;
+                    });
+                    renderActivationMatrix();
+                }
+            }
+        }
+
+     
+
 
         if (target.closest('#addNewGroupBtn')) {
             renderGroupEditor(null);
