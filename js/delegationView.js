@@ -557,10 +557,9 @@ function renderDetailsPanel(entity, company) {
                         <input type="text" class="multi-select-search-input" placeholder="Search contracts...">
                         <div class="multi-select-list">
                             ${availableItems.map(item => `
-                                <label>
-                                    <input type="checkbox" data-item-id="${item.id}" class="h-4 w-4 rounded border-gray-500 bg-gray-800 text-blue-600 focus:ring-blue-500 mr-2">
+                                <button class="w-full text-left p-2 hover:bg-gray-700" data-item-id="${item.id}" data-action="add-contract">
                                     ${item.name}
-                                </label>
+                                </button>
                             `).join('')}
                         </div>
                     </div>
@@ -1416,10 +1415,10 @@ if (delegationTable) {
                 const company = state.activation.selectedCompany;
                 const entityId = state.activation.selectedEntityId;
 
-                if (action === 'remove-contract') {
+                if (action === 'remove-contract' || action === 'add-contract') {
                     const itemId = actionTarget.dataset.itemId;
                     const matrixKey = `${entityId}_${itemId}`;
-                    state.activation.matrix[company][matrixKey] = false;
+                    state.activation.matrix[company][matrixKey] = action === 'add-contract';
                     renderActivationMatrix();
                 }
 
