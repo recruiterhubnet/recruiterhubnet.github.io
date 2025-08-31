@@ -1048,7 +1048,7 @@
     </div>
 
     <div id="delegationSettingsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-7xl h-[95vh] flex flex-col ring-1 ring-gray-700">
             <header class="flex justify-between items-center p-4 border-b border-gray-700 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <i class="fas fa-cogs text-blue-400 text-xl"></i>
@@ -1057,49 +1057,69 @@
                 <button id="closeDelegationSettingsBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
             </header>
 
-            <main class="flex-grow p-6 flex flex-col overflow-hidden">
-                <nav class="flex border-b border-gray-700 mb-4 flex-shrink-0">
+            <main class="delegation-settings-modal-main p-0 flex flex-col">
+                <nav class="flex border-b border-gray-700 px-6 flex-shrink-0">
                     <button data-tab="columns" class="delegation-settings-tab active">
                         <i class="fas fa-columns"></i> Column & Group Management
                     </button>
                     <button data-tab="activation" class="delegation-settings-tab">
-                        <i class="fas fa-toggle-on"></i> Activation Matrix
+                        <i class="fas fa-cogs"></i> Activation Manager
                     </button>
                 </nav>
 
-                <div class="flex-grow overflow-y-auto">
-                    <div id="tab-content-columns" class="delegation-settings-tab-content">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <h4 class="text-lg font-semibold text-white">Contract Groups</h4>
-                                    <button id="addNewGroupBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-md text-sm flex items-center gap-2 transition-colors">
-                                        <i class="fas fa-plus"></i> Add New Group
-                                    </button>
-                                </div>
-                                <div id="contractGroupsContainer" class="p-4 bg-gray-800/50 rounded-lg space-y-3">
-                                    <p class="text-gray-500 text-sm">Click "Add New Group" to begin.</p>
-                                </div>
+                <div id="tab-content-columns" class="delegation-settings-tab-content p-6 overflow-y-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <h4 class="text-lg font-semibold text-white">Contract Groups</h4>
+                                <button id="addNewGroupBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-md text-sm flex items-center gap-2 transition-colors">
+                                    <i class="fas fa-plus"></i> Add New Group
+                                </button>
                             </div>
-                    
-                            <div class="space-y-4">
-                                <h4 class="text-lg font-semibold text-white">Visible Columns</h4>
-                                <div id="columnVisibilityContainer" class="p-4 bg-gray-800/50 rounded-lg space-y-3">
-                                    </div>
+                            <div id="contractGroupsContainer" class="p-4 bg-gray-800/50 rounded-lg space-y-3">
+                                <p class="text-gray-500 text-sm">Click "Add New Group" to begin.</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <h4 class="text-lg font-semibold text-white">Visible Columns</h4>
+                            <div id="columnVisibilityContainer" class="p-4 bg-gray-800/50 rounded-lg space-y-3">
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div id="tab-content-activation" class="delegation-settings-tab-content hidden">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-semibold text-white">Activation Matrix</h4>
+                <div id="tab-content-activation" class="delegation-settings-tab-content hidden p-0">
+                    <div id="activationManagerContainer" class="flex-grow flex flex-col overflow-hidden">
+                        <div class="p-4 border-b border-gray-700 flex-shrink-0 flex items-center justify-between gap-4">
                             <div class="flex items-center p-0.5 bg-gray-800 rounded-md" title="Switch between Team and Profiler view">
                                 <button data-entity="team" class="matrix-entity-switcher active px-3 py-1 text-sm font-semibold rounded-md">Team View</button>
                                 <button data-entity="profiler" class="matrix-entity-switcher px-3 py-1 text-sm font-semibold rounded-md">Profiler View</button>
                             </div>
-                        </div>
-                        <div id="activationMatrixContainer" class="overflow-auto">
+                            <div class="company-switcher-tabs">
                             </div>
+                        </div>
+                        <div class="flex-grow flex overflow-hidden">
+                            <div id="activation-entity-panel" class="w-1/3 border-r border-gray-700 flex flex-col">
+                                <div class="p-3 border-b border-gray-700 flex-shrink-0">
+                                    <input type="text" id="entitySearchInput" class="modal-input w-full" placeholder="Search...">
+                                    <div class="flex items-center mt-2">
+                                        <input type="checkbox" id="showInactiveCheckbox" class="h-4 w-4 rounded border-gray-500 bg-gray-800 text-blue-600 focus:ring-blue-500">
+                                        <label for="showInactiveCheckbox" class="ml-2 text-sm text-gray-300">Show Inactive</label>
+                                    </div>
+                                </div>
+                                <div id="entity-list-container" class="flex-grow overflow-y-auto">
+                                </div>
+                             
+                            </div>
+                            <div id="activation-details-panel" class="w-2/3 flex flex-col">
+                                <div class="p-4 flex-grow overflow-y-auto">
+                                    </div>
+                                <div id="activation-bulk-actions" class="p-3 border-t border-gray-700 flex-shrink-0 flex gap-2" style="display: none;">
+                                    <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md text-sm transition-colors" data-action="select-all-visible">Select All Visible</button>
+                                    <button class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 rounded-md text-sm transition-colors" data-action="deselect-all-visible">Deselect All Visible</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
