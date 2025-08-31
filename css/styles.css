@@ -967,7 +967,15 @@ input:checked + .toggle-slider {
 input:checked + .toggle-slider:before {
     transform: translateX(20px);
 }
-/* --- DELEGATION SETTINGS: ACTIVATION MATRIX --- */
+/* --- DELEGATION SETTINGS: ACTIVATION MANAGER (REDESIGN) --- */
+
+.delegation-settings-modal-main {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 .matrix-entity-switcher {
     background: none;
     border: none;
@@ -980,76 +988,16 @@ input:checked + .toggle-slider:before {
     color: #ffffff;
 }
 
-#activationMatrixContainer table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 4px; /* Creates vertical space between rows */
-}
-
-#activationMatrixContainer th {
-    text-align: left;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-#activationMatrixContainer td {
-    padding: 0.5rem 0.75rem;
-    background-color: #1f2937;
-    border-top: 1px solid #374151;
-    border-bottom: 1px solid #374151;
-}
-
-#activationMatrixContainer td:first-child {
-    font-weight: 600;
-    color: #e5e7eb;
-    border-left: 1px solid #374151;
-    border-top-left-radius: 0.375rem;
-    border-bottom-left-radius: 0.375rem;
-}
-
-#activationMatrixContainer td:last-child {
-    border-right: 1px solid #374151;
-    border-top-right-radius: 0.375rem;
-    border-bottom-right-radius: 0.375rem;
-}
-
-#activationMatrixContainer td.matrix-cell {
-    text-align: center;
-}
-
-.targets-table .historical-day-header {
-    color: #60a5fa; 
-}
-/* --- NEW STYLES FOR REDESIGNED ACTIVATION MATRIX --- */
-.company-matrix-section {
-    margin-bottom: 2rem; /* Space between company sections */
-}
-
-.company-matrix-header {
-    font-size: 1.125rem; /* text-lg */
-    font-weight: 600; /* font-semibold */
-    color: #e5e7eb; /* text-gray-200 */
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #4b5563; /* border-gray-600 */
-}
-/* --- NEW STYLES FOR ACTIVATION MATRIX COMPANY TABS --- */
+/* Company Tabs */
 .company-switcher-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid #4b5563;
-    padding-bottom: 1rem;
 }
 
 .company-tab-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: #9ca3af;
     background-color: #1f2937;
@@ -1069,85 +1017,138 @@ input:checked + .toggle-slider:before {
     border-color: #60a5fa;
     color: #ffffff;
 }
-/* --- NEW STYLES FOR ACTIVATION MATRIX ACTIONS --- */
-.matrix-global-actions {
+
+/* Entity List (Left Panel) */
+.entity-list-item {
     display: flex;
-    gap: 0.75rem;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #374151;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.entity-list-item:hover {
+    background-color: #374151;
+}
+
+.entity-list-item.selected {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.entity-name {
+    font-weight: 500;
+}
+
+.entity-active-count {
+    font-size: 0.75rem;
+    font-family: 'ui-monospace', monospace;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+}
+
+.entity-list-item.selected .entity-active-count {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Details Panel (Right Panel) */
+#activation-details-panel .details-header {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #e5e7eb;
     margin-bottom: 1rem;
 }
 
-.matrix-action-btn {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #9ca3af;
-    background-color: transparent;
+#activation-details-panel .details-header .entity-highlight {
+    color: #60a5fa;
+}
+
+.active-contracts-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: #111827;
     border: 1px solid #4b5563;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    border-radius: 0.5rem;
+    min-height: 80px;
 }
 
-.matrix-action-btn:hover {
+.contract-pill {
+    display: inline-flex;
+    align-items: center;
     background-color: #374151;
-    color: #e5e7eb;
+    color: #d1d5db;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 500;
 }
 
-#activationMatrixContainer .clickable-header {
+.contract-pill-remove {
+    margin-left: 0.5rem;
+    background: none;
+    border: none;
+    color: #9ca3af;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: color 0.2s;
 }
 
-#activationMatrixContainer .clickable-header:hover {
+.contract-pill-remove:hover {
+    color: #f87171;
+}
+
+/* Multi-Select Dropdown */
+.multi-select-container {
+    position: relative;
+}
+
+.multi-select-dropdown {
+    display: none;
+    position: absolute;
+    z-index: 50;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: #1f2937;
+    border: 1px solid #4b5563;
+    border-radius: 0.5rem;
+    margin-top: 0.25rem;
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.multi-select-dropdown.visible {
+    display: block;
+}
+
+.multi-select-search-input {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: #111827;
+    border-bottom: 1px solid #4b5563;
+    color: #d1d5db;
+}
+.multi-select-search-input:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.multi-select-list label {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.multi-select-list label:hover {
     background-color: #374151;
-}
-/* --- FINAL, CORRECTED STICKY HEADER FOR ACTIVATION MATRIX --- */
-
-/* This targets the main content area inside the modal */
-.delegation-settings-modal-main {
-    flex-grow: 1; /* Make this area fill the available space */
-    overflow-y: auto; /* This container will handle its own scrolling if needed */
-    display: flex; /* Use flexbox for its children */
-    flex-direction: column;
-}
-
-/* This is the content area for a specific tab (e.g., "Activation Matrix") */
-.delegation-settings-tab-content {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Make it fill the space of its tab content parent */
-    overflow: hidden; /* It should not scroll itself */
-}
-
-/* The main container within the "Activation Matrix" tab */
-#activationMatrixContainer {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Let it fill the space of its tab content parent */
-    overflow: hidden; /* It should not scroll either */
-}
-
-/* The div holding the non-scrolling buttons and company tabs */
-.matrix-controls {
-    flex-shrink: 0; /* Prevent this part from shrinking */
-    padding: 0 0.5rem;
-}
-
-/* The div that wraps the table and provides the scrollbar */
-.matrix-table-wrapper {
-    flex-grow: 1; /* Take up all remaining vertical space */
-    overflow: auto; /* THIS IS THE SCROLLING ELEMENT */
-    position: relative; /* Required for sticky positioning */
-    padding: 0 0.5rem;
-}
-
-/* The sticky header for the table */
-.matrix-table-wrapper thead th {
-    position: sticky;
-    top: 0;
-    background-color: #1f2937; /* Solid background to hide content scrolling under it */
-    z-index: 10;
-    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
 }
 /* --- DEFINITIVE STICKY HEADER & COLUMN FIX FOR DELEGATION TABLE --- */
 #delegation-table {
