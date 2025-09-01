@@ -159,5 +159,9 @@ export const state = {
     // Rankings Weight Settings for Recruiter/Team
     rankingWeights: JSON.parse(JSON.stringify(defaultRankingWeights)),
     // Rankings Weight Settings for Profiler
-    rankingWeightsProfiler: JSON.parse(JSON.stringify(defaultRankingWeightsProfiler))
+    rankingWeightsProfiler: JSON.parse(JSON.stringify(defaultRankingWeightsProfiler)),
+    // Global Settings State
+    localSettingsVersion: 0,
+    globalSettingsVersion: 0,
+    globalSettings: null,
 };
