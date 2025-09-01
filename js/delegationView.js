@@ -2,6 +2,7 @@ import { state as appState } from './state.js'; // Import the main app state
 import { calculateRankings } from './rankingsView.js';
 import { formatDuration, getSelectedValues } from './ui.js';
 
+
 let activeTooltip = null;
 
 // --- LOCAL STATE & SETTINGS ---
@@ -78,13 +79,16 @@ function generateSettingsFromState() {
     // --- Use Default Contract List ---
     const allContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
     
-    const combinedData = [...appState.allData, ...appState.drugTestsData];
-    const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
-    const allProfilers = [...new Set(combinedData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
+    const combinedData = [...appState.allData, ...appState.drugTestsData, ...appState.recruiterData, ...appState.profilerData];
+    const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))].sort();
+    const allProfilers = [...new Set(combinedData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))].sort();
 
-    state.settings.contracts = allContracts.map((c, i) => ({ id: `c${i}`, name: c }));
-    state.activation.teams = allTeams.map((t, i) => ({ id: `t${i}`, name: t }));
-    state.activation.profilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
+    // FIX: Create a stable, name-based ID that will never change.
+    const sanitizeForId = (name) => name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+
+    state.settings.contracts = allContracts.map((c, i) => ({ id: `c${i}`, name: c })); // Contract IDs can remain index-based as they are a fixed list.
+    state.activation.teams = allTeams.map(t => ({ id: sanitizeForId(t), name: t }));
+    state.activation.profilers = allProfilers.map(p => ({ id: sanitizeForId(p), name: p }));
 
     state.settings.contracts.forEach(c => {
         if (state.settings.visibility[c.id] === undefined) {
@@ -1302,6 +1306,16 @@ if (delegationTable) {
     if (saveSettingsBtn) {
         saveSettingsBtn.addEventListener('click', () => {
             saveSettings();
+            
+            // This is the added code to reset the version when saving local settings
+            localStorage.setItem('localSettingsVersion', 0);
+            appState.localSettingsVersion = 0;
+
+            const globalSettingsBtn = document.getElementById('navGlobalSettings');
+            if (globalSettingsBtn && appState.globalSettingsVersion > 0) {
+                globalSettingsBtn.classList.add('out-of-sync');
+            }
+
             settingsModal.classList.add('hidden');
             renderTable();
         });
@@ -1384,14 +1398,6 @@ if (delegationTable) {
             renderActivationMatrix();
             return;
         }
-
-        // Add an event listener for the new checkbox and the search input
-        const searchInput = target.closest('#entitySearchInput');
-        const inactiveCheckbox = target.closest('#showInactiveCheckbox');
-        if (searchInput || inactiveCheckbox) {
-            renderActivationMatrix();
-            return;
-        }
         
         const companyTabBtn = target.closest('.company-tab-btn');
         if (companyTabBtn) {
@@ -1418,6 +1424,10 @@ if (delegationTable) {
                 if (action === 'remove-contract' || action === 'add-contract') {
                     const itemId = actionTarget.dataset.itemId;
                     const matrixKey = `${entityId}_${itemId}`;
+                    // FIX: Ensure the matrix for the company exists before assigning to it.
+                    if (!state.activation.matrix[company]) {
+                        state.activation.matrix[company] = {};
+                    }
                     state.activation.matrix[company][matrixKey] = action === 'add-contract';
                     renderActivationMatrix();
                 }
@@ -1495,6 +1505,11 @@ if (delegationTable) {
             }
         }
     });
+
+    // FIX: Add a separate 'input' event listener for the search bar to make it responsive as you type.
+    settingsModal.querySelector('#entitySearchInput')?.addEventListener('input', renderActivationMatrix);
+    // FIX: Add a 'change' listener for the checkbox as well.
+    settingsModal.querySelector('#showInactiveCheckbox')?.addEventListener('change', renderActivationMatrix);
 
     settingsModal.addEventListener('change', (e) => {
         const target = e.target;
