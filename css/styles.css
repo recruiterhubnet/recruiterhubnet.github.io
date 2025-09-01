@@ -2341,3 +2341,24 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     font-weight: 600;
 }
 /* --- END: Styles for New Columns in Image Modal (ROW INPUTS) --- */
+
+
+/* --- START: Global Settings Button Pulse --- */
+.main-nav-btn.out-of-sync {
+    background-color: #991b1b; /* red-800 */
+    color: #fecaca; /* red-200 */
+    animation: pulse-red 2s infinite;
+    border-color: #dc2626; /* red-600 */
+}
+
+@keyframes pulse-red {
+    0%, 100% {
+        background-color: #991b1b; /* red-800 */
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    }
+    70% {
+        background-color: #b91c1c; /* red-700 */
+        box-shadow: 0 0 10px 10px rgba(220, 38, 38, 0);
+    }
+}
+/* --- END: Global Settings Button Pulse --- */
