@@ -11,6 +11,8 @@ export const mvrPspCdlAppScriptUrl = 'https://script.google.com/macros/s/AKfycby
 export const leadLifecycleAppScriptUrl = 'https://script.google.com/macros/s/AKfycbx5dp8RX2ezRT3jM64Av5nvGtHD6eRIt8wlkCURXaRycBY-neRtLnWiM8ZVb4XaRWT9aw/exec';
 //This is the popup link
 export const updatesAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxa3nlW8L4ORpURFYmkCUrpmHi_8Yu9izL8wTKJZM9DMDT1P19rJHCsfiaGiqUjfFanEQ/exec'; 
+//This is global settings link
+export const globalSettingsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxLXOhn0ojcH_X-SC4stV-n7IpGNaATBHHhnEZGmFPWwKvo1mrVZbFCG10cLa8j4smg/exec';
 
 export const columnsConfig = {
     date: { label: 'Date', visible: true, type: 'date' },
