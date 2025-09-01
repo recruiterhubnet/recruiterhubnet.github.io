@@ -535,7 +535,7 @@ function saveRankingsSettings() {
     settingsToUpdate.tteLeadType = document.getElementById('tteLeadType').value;
     settingsToUpdate.ttePValue = document.getElementById('ttePercentileSelect').value;
     settingsToUpdate.leadsReachedLeadType = document.getElementById('leadsReachedLeadType').value;
-    
+
     if (isProfilerMode) {
         settingsToUpdate.tteSourceProfiler = document.getElementById('tteSourceProfiler').value;
         settingsToUpdate.leadsReachedSourceProfiler = document.getElementById('leadsReachedSourceProfiler').value;
@@ -543,29 +543,22 @@ function saveRankingsSettings() {
         settingsToUpdate.tteSource = document.getElementById('tteSource').value;
         settingsToUpdate.leadsReachedSource = document.getElementById('leadsReachedSource').value;
     }
-    
-    // Fix for perLeadMetrics potentially being a string
+
     if (typeof settingsToUpdate.perLeadMetrics !== 'object' || settingsToUpdate.perLeadMetrics === null) {
         settingsToUpdate.perLeadMetrics = {};
     }
     document.querySelectorAll('.per-lead-checkbox').forEach(checkbox => {
         settingsToUpdate.perLeadMetrics[checkbox.dataset.key] = checkbox.checked;
     });
-    
-    // --- START: THIS IS THE FIX FOR THE NEW ERROR ---
-    // This check handles both profiler mode (where tenureSettings might not exist)
-    // and recruiter mode (where it might be corrupted into a string).
+
     if (settingsToUpdate.hasOwnProperty('tenureSettings')) {
-        // Ensure it's an object before saving. If it was a corrupted string, it gets reset.
         if (typeof settingsToUpdate.tenureSettings !== 'object' || settingsToUpdate.tenureSettings === null) {
             settingsToUpdate.tenureSettings = {};
         }
         settingsToUpdate.tenureSettings.excludeLastDays = parseInt(document.getElementById('tenureExcludeDays').value, 10) || 0;
         settingsToUpdate.tenureSettings.lookbackDays = parseInt(document.getElementById('tenureLookbackDays').value, 10) || 60;
     }
-    // --- END: THIS IS THE FIX FOR THE NEW ERROR ---
-    
-    // Part 2: Save settings from the new "Exclusion Rules" UI
+
     const editorContainer = document.querySelector('#exclusionRuleEditorPanel .exclusion-rule-set');
     if (editorContainer) {
         const currentlyDisplayedRules = parseExclusionRuleSet(editorContainer);
@@ -579,10 +572,18 @@ function saveRankingsSettings() {
             }
         }
     }
-    
-    // Part 3: Finalize, save to local storage, and close
+
+    // Part 3: Finalize, save to local storage, and reset local version
     const storageKey = isProfilerMode ? 'rankingSettingsProfiler' : 'rankingSettings';
     localStorage.setItem(storageKey, JSON.stringify(settingsToUpdate));
+    localStorage.setItem('localSettingsVersion', 0);
+    state.localSettingsVersion = 0;
+    
+    // And ensure the UI is updated to reflect the change
+    const globalSettingsBtn = document.getElementById('navGlobalSettings');
+    if (globalSettingsBtn && state.globalSettingsVersion > 0) {
+        globalSettingsBtn.classList.add('out-of-sync');
+    }
 
     closeModal('rankingsSettingsModal');
     rerenderRankingsView();
