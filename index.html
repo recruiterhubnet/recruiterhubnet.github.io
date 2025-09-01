@@ -44,6 +44,8 @@
                 <button id="navArrivals" class="main-nav-btn" title="Track arrivals and drug tests"><i class="fas fa-plane-arrival"></i><span class="nav-text">Arrivals</span></button>
                 <button id="navTimeToEngage" class="main-nav-btn" title="Analyze time to first engagement"><i class="fas fa-user-clock"></i><span class="nav-text">Time to Engage</span></button>
                 <button id="navSwitchboard" class="main-nav-btn" title="Analyze recruiter phone switching"><i class="fas fa-random"></i><span class="nav-text">Switchboard</span></button>
+                <button id="navGlobalSettings" class="main-nav-btn" title="Manage Global Settings"><i class="fas fa-globe"></i><span class="nav-text">Global Settings</span></button>
+            </nav>
             </nav>
             <footer class="pt-4 border-t border-gray-700 shrink-0">
                 <button id="collapseBtn" class="main-nav-btn w-full justify-center" title="Collapse or expand the sidebar"><i id="collapseIcon" class="fas fa-angles-left"></i><span class="nav-text">Collapse</span></button>
@@ -1225,7 +1227,28 @@
             </main>
         </div>
     </div>
-    
+
+    <div id="globalSettingsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900/95 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col ring-1 ring-gray-700">
+            <header class="flex justify-between items-center p-4 border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-globe text-blue-400 text-xl"></i>
+                    <h3 class="text-xl font-semibold text-white">Global Settings</h3>
+                </div>
+                <button id="closeGlobalSettingsModalBtn" class="text-gray-400 hover:text-white text-2xl" title="Close window">&times;</button>
+            </header>
+            <main class="flex-grow p-6 space-y-4">
+                <p class="text-gray-400">Use these options to load settings from the master Google Sheet or export your current local settings.</p>
+                <button id="loadGlobalSettingsBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md text-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-cloud-download-alt"></i> Load Existing Global Settings & Weights
+                </button>
+                <button id="exportGlobalSettingsBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-md text-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-cloud-upload-alt"></i> Export Global Settings
+                </button>
+            </main>
+        </div>
+    </div>
+
     <script src="js/app.js" type="module"></script>
 </body>
 </html>
