@@ -1,11 +1,9 @@
-// js/app.js
-
-import { fetchAllData } from './api.js';
+import { fetchAllData, exportGlobalSettings, fetchGlobalSettings } from './api.js';
 import { columnsConfig } from './config.js';
-import { state } from './state.js';
+import { state, defaultRankingWeights, defaultRankingWeightsProfiler } from './state.js';
 import { 
     populateAllDropdowns, renderColumnCheckboxes, loadProfilesFromStorage, loadProfile,
-    handleSidebarCollapse, openModal, closeModal 
+    handleSidebarCollapse, openModal, closeModal, updateMultiSelectButtonText 
 } from './ui.js';
 import { 
     applyAllFiltersAndRender, sortData, renderTable, renderTableHeaders 
@@ -27,6 +25,76 @@ import { initializeSwitchboardView, renderAllSwitchboard } from './switchboardVi
 
 
 
+// --- NEW FUNCTIONS FOR GLOBAL SETTINGS ---
+
+async function handleLoadGlobalSettings() {
+    if (!confirm("Are you sure you want to overwrite your local settings with the global settings? This action cannot be undone.")) {
+        return;
+    }
+
+    // Fetch the latest settings from the server
+    const globalSettings = await fetchGlobalSettings();
+
+    if (!globalSettings || !globalSettings.version) {
+        alert("Global settings are not available or are in an invalid format. Please try again later.");
+        return;
+    }
+
+    // Overwrite local storage with data from the fetched global settings
+    localStorage.setItem('rankingSettings', JSON.stringify(globalSettings.rankingSettings));
+    localStorage.setItem('rankingSettingsProfiler', JSON.stringify(globalSettings.rankingSettingsProfiler));
+    localStorage.setItem('rankingWeights', JSON.stringify(globalSettings.rankingWeights));
+    localStorage.setItem('rankingWeightsProfiler', JSON.stringify(globalSettings.rankingWeightsProfiler));
+    localStorage.setItem('delegationSettings', JSON.stringify(globalSettings.delegationSettings));
+    localStorage.setItem('delegationActivation', JSON.stringify(globalSettings.delegationActivation));
+
+    // FIX: Save the new version number to local storage BEFORE reloading.
+    localStorage.setItem('localSettingsVersion', globalSettings.version);
+
+    alert("Global Settings Loaded! The application will now reload to apply the changes.");
+
+    // Close modal and reload the page to ensure all components re-initialize with new settings
+    closeModal('globalSettingsModal');
+    location.reload();
+}
+
+async function handleExportGlobalSettings() {
+    const pin = prompt("Please enter your PIN to export global settings:");
+    if (!pin) {
+        return; // User cancelled or entered nothing
+    }
+
+    const localSettings = {
+        rankingSettings: JSON.parse(localStorage.getItem('rankingSettings')),
+        rankingSettingsProfiler: JSON.parse(localStorage.getItem('rankingSettingsProfiler')),
+        rankingWeights: JSON.parse(localStorage.getItem('rankingWeights')),
+        rankingWeightsProfiler: JSON.parse(localStorage.getItem('rankingWeightsProfiler')),
+        delegationSettings: JSON.parse(localStorage.getItem('delegationSettings')),
+        delegationActivation: JSON.parse(localStorage.getItem('delegationActivation')),
+    };
+
+    const response = await exportGlobalSettings(localSettings, pin);
+    
+    if (response.status === 'success') {
+        alert("Your local settings were successfully saved to the global sheet.");
+        // After a successful export, the local settings are now up-to-date with the global version.
+        const newGlobalSettings = await fetchGlobalSettings();
+        if(newGlobalSettings && newGlobalSettings.version) {
+            state.localSettingsVersion = parseInt(newGlobalSettings.version, 10);
+            localStorage.setItem('localSettingsVersion', state.localSettingsVersion);
+            state.globalSettingsVersion = parseInt(newGlobalSettings.version, 10);
+            const globalSettingsBtn = document.getElementById('navGlobalSettings');
+            if (globalSettingsBtn) {
+                globalSettingsBtn.classList.remove('out-of-sync');
+            }
+        }
+        closeModal('globalSettingsModal');
+    } else {
+        alert(`Failed to export settings: ${response.message || 'Unknown error.'}`);
+    }
+}
+
+
 // Register Chart.js plugins globally
 Chart.register(ChartDataLabels);
 
@@ -46,6 +114,10 @@ function getYesterdayDateString() {
 
 
 function initializeApp() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    loadingScreen.classList.remove('hidden');
+    loadingScreen.classList.remove('opacity-0');
+
     fetchAllData().then(data => {
         if (!data) {
             console.error("Failed to fetch critical data. Application cannot start.");
@@ -151,6 +223,39 @@ function initializeApp() {
         state.leadLifecycleData = data.leadLifecycleData || [];
         state.combinedDataForRankings = [...state.allData, ...state.drugTestsData, ...state.mvrPspCdlData, ...state.recruiterData, ...state.profilerData];
 
+       // --- GLOBAL SETTINGS CHECK ---
+       if (data.globalSettingsData && data.globalSettingsData.version) {
+        state.globalSettings = data.globalSettingsData;
+        state.globalSettingsVersion = parseInt(data.globalSettingsData.version, 10);
+        }
+        state.localSettingsVersion = parseInt(localStorage.getItem('localSettingsVersion') || 0, 10);
+
+        // This ensures the local version is correctly set on first run and detects an out-of-sync state
+        if (!localStorage.getItem('localSettingsVersion') && state.globalSettingsData) {
+            state.localSettingsVersion = 0;
+        }
+
+        if (state.globalSettingsVersion > state.localSettingsVersion) {
+            const globalSettingsBtn = document.getElementById('navGlobalSettings');
+            if (globalSettingsBtn) {
+                globalSettingsBtn.classList.add('out-of-sync');
+            }
+        }
+
+        // This ensures the local version is saved on the first run, preventing an unnecessary "out of sync" state
+        if (!localStorage.getItem('localSettingsVersion') && state.globalSettingsVersion > 0) {
+            localStorage.setItem('localSettingsVersion', state.globalSettingsVersion);
+            state.localSettingsVersion = state.globalSettingsVersion;
+        }
+
+        if (state.globalSettingsVersion > state.localSettingsVersion) {
+            const globalSettingsBtn = document.getElementById('navGlobalSettings');
+            if (globalSettingsBtn) {
+                globalSettingsBtn.classList.add('out-of-sync');
+            }
+        }
+        // --- END GLOBAL SETTINGS CHECK ---
+
         if (data.updatesData && data.updatesData.version) {
             const latestVersion = data.updatesData.version;
             const lastSeenVersion = localStorage.getItem('lastSeenUpdateVersion');
@@ -219,6 +324,7 @@ function addEventListeners() {
         arrivals: document.getElementById('navArrivals'),
         timeToEngage: document.getElementById('navTimeToEngage'),
         switchboard: document.getElementById('navSwitchboard'),
+        globalSettings: document.getElementById('navGlobalSettings'),
     };
 
     const views = {
@@ -256,6 +362,12 @@ function addEventListeners() {
     navButtons.arrivals.addEventListener('click', () => setActiveView('arrivals'));
     navButtons.timeToEngage.addEventListener('click', () => { setActiveView('timeToEngage'); rerenderTimeToEngageView(); });
     navButtons.switchboard.addEventListener('click', () => { setActiveView('switchboard'); renderAllSwitchboard(); });
+    navButtons.globalSettings.addEventListener('click', () => openModal('globalSettingsModal'));
+
+    // --- Global Settings Modal Listeners ---
+    document.getElementById('closeGlobalSettingsModalBtn').addEventListener('click', () => closeModal('globalSettingsModal'));
+    document.getElementById('loadGlobalSettingsBtn').addEventListener('click', handleLoadGlobalSettings);
+    document.getElementById('exportGlobalSettingsBtn').addEventListener('click', handleExportGlobalSettings);
     
 
     document.getElementById('collapseBtn').addEventListener('click', handleSidebarCollapse);
