@@ -714,7 +714,6 @@ if (fromDate && toDate) {
     visibleItems.forEach(item => {
         const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
 
-        // --- CORRECTED DATA AGGREGATION LOGIC ---
         const entityTypeFilter = (row) => state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
 
         const leadRiskDataForLevel = appState.allData.filter(row => {
@@ -750,7 +749,6 @@ if (fromDate && toDate) {
             ...filteredLeadRiskData, ...filteredMvrPspCdlData, ...filteredPastDueData,
             ...filteredProfilerData, ...filteredArrivalsData, ...filteredDrugTestsData
         ];
-        // --- END: CORRECTED DATA AGGREGATION LOGIC ---
 
         const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
         const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
@@ -769,7 +767,7 @@ if (fromDate && toDate) {
 
     let totalDailyTargetAllCompanies = 0;
     companies.forEach(company => {
-    const companyTargets = entityTargets[company] || {}; // Use the corrected entityTargets object
+    const companyTargets = entityTargets[company] || {};
     visibleItems.forEach(item => { totalDailyTargetAllCompanies += companyTargets[item.id] || 0; });
     });
 
@@ -781,22 +779,21 @@ if (fromDate && toDate) {
         let totalProjectedLeads = 0;
 
         companies.forEach(company => {
-            const companyTargets = entityTargets[company] || {}; // Use the corrected entityTargets object here as well
+            const companyTargets = entityTargets[company] || {};
             const companyMatrix = state.activation.matrix[company] || {};
             let companyProjectedLeads = 0;
             const breakdownForCompany = [];
 
             visibleItems.forEach(item => {
                 const entityObject = entities.find(e => e.name === entityRow.entity);
-                if (!entityObject || companyMatrix[`${entityObject.id}_${item.id}`] === false) {
-                    return;
-                }
+                if (!entityObject) return;
                 
                 const dailyTarget = companyTargets[item.id] || 0;
                 const itemRanks = contractSpecificRanks.get(item.id) || new Map();
+                
                 const eligibleEntities = entities.filter(e => {
                     const matrixKey = `${e.id}_${item.id}`;
-                    return companyMatrix[matrixKey] !== false;
+                    return companyMatrix[matrixKey] === true;
                 });
                 
                 const totalRankScoreForItem = eligibleEntities.reduce((sum, e) => sum + (itemRanks.get(e.name) || 0), 0);
@@ -804,22 +801,18 @@ if (fromDate && toDate) {
                 let projDel = 0;
                 let projLeads = 0;
                 
-                // Only do calculations if the current entity is actually eligible for this item
                 if (eligibleEntities.some(e => e.name === entityRow.entity)) {
                     if (totalRankScoreForItem > 0) {
-                        // If there's performance data, distribute by rank
                         const rankPercent = itemRanks.get(entityRow.entity) || 0;
                         projDel = (rankPercent / totalRankScoreForItem) * 100;
                         projLeads = Math.round(projDel / 100 * dailyTarget);
                     } else if (eligibleEntities.length > 0 && dailyTarget > 0) {
-                        // If no performance data exists, distribute equally among active entities
                         projDel = 100 / eligibleEntities.length;
                         projLeads = Math.round(projDel / 100 * dailyTarget);
                     }
                 }
                 
                 companyProjectedLeads += projLeads;
-                // Always add the item to the breakdown list, even if projection is 0
                 breakdownForCompany.push({ name: item.name, projLeads, projDel });
             });
 
@@ -896,7 +889,6 @@ if (fromDate && toDate) {
     
         let allBreakdownRowsHTML = '';
     
-        // Add the new projected leads breakdown row first if it exists
         if (projectedLeadsBreakdown) {
                 allBreakdownRowsHTML += `<tr class="daily-breakdown" id="master-proj-leads-breakdown-${index}">
                 <td colspan="${5 + companies.length}" class="breakdown-cell" style="text-align: center; font-size: 0.75rem; white-space: normal; padding: 0.5rem 1rem !important;">
@@ -905,13 +897,18 @@ if (fromDate && toDate) {
             </tr>`;
         }
     
-        // Add the existing company-specific breakdown rows
         companies.forEach(c => {
             const companyMatrix = state.activation.matrix[c] || {};
-            const isEntityActiveForCompany = entityObject && item.companyBreakdowns[c] && item.companyBreakdowns[c].length > 0;
             const companyClass = `company-color-${c.toLowerCase().replace(/\s+/g, '-')}`;
-    
-            if (isEntityActiveForCompany) {
+            
+            // --- THIS IS THE FIX ---
+            // Check if the entity is active for ANY visible contract/group within THIS specific company.
+            const isEntityActiveForThisCompany = entityObject && visibleItems.some(visItem => {
+                const matrixKey = `${entityObject.id}_${visItem.id}`;
+                return companyMatrix[matrixKey] === true;
+            });
+
+            if (isEntityActiveForThisCompany) {
                 const leads = item.companyLeads[c] || 0;
                 const share = companyTotals[c] > 0 ? (leads / companyTotals[c]) * 100 : 0;
                 mainRowHTML += `<td class="col-numeric expand-cell">${leads} <span class="col-percent">(${share.toFixed(0)}%)</span><i class="fas fa-plus-circle fa-xs expand-btn" data-target="master-breakdown-${index}-${c.replace(/\s+/g, '-')}" title="Show contract breakdown for ${c}"></i></td>`;
@@ -922,13 +919,20 @@ if (fromDate && toDate) {
             allBreakdownRowsHTML += `<tr class="daily-breakdown ${companyClass}" id="master-breakdown-${index}-${c.replace(/\s+/g, '-')}">
                 <td colspan="${5 + companies.length}" class="breakdown-cell">
                     <div class="breakdown-grid">
-                        ${(item.companyBreakdowns[c] || []).map(breakdownItem => {
-                             if (breakdownItem.name.toUpperCase() === 'ALL') return '';
-                             return `<div class="day-stat">
-                                <div class="day-label">${breakdownItem.name}</div>
-                                <div class="day-value">${breakdownItem.projLeads} (${breakdownItem.projDel.toFixed(0)}%)</div>
-                            </div>`;
-                        }).join('')}
+                        ${(item.companyBreakdowns[c] || [])
+                            .filter(breakdownItem => {
+                                const itemObject = visibleItems.find(vi => vi.name === breakdownItem.name);
+                                if (!entityObject || !itemObject) return false;
+                                const matrixKey = `${entityObject.id}_${itemObject.id}`;
+                                return companyMatrix[matrixKey] === true;
+                            })
+                            .map(breakdownItem => {
+                                 if (breakdownItem.name.toUpperCase() === 'ALL') return '';
+                                 return `<div class="day-stat">
+                                    <div class="day-label">${breakdownItem.name}</div>
+                                    <div class="day-value">${breakdownItem.projLeads} (${breakdownItem.projDel.toFixed(0)}%)</div>
+                                </div>`;
+                            }).join('')}
                     </div>
                 </td>
             </tr>`;
@@ -951,7 +955,7 @@ function renderCompanyView() {
         delegationTable.innerHTML = `<tbody><tr><td colspan="20" class="text-center p-8 text-gray-500">No data available for company view. Please check filters.</td></tr></tbody>`;
         return;
     }
-    
+
     const allEntitiesList = state.currentEntity === 'team' ? state.activation.teams : state.activation.profilers;
     const visibleItems = getContractsActiveInMatrix(currentCompanyView, state.currentEntity);
 
@@ -967,7 +971,7 @@ function renderCompanyView() {
             return companyMatrix[matrixKey] === true;
         });
     });
-    
+
     const dayLabels = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(sevenDaysAgoCutoff);
         d.setDate(d.getDate() + i);
@@ -980,7 +984,7 @@ function renderCompanyView() {
 
     const fromDate = fromDateStr ? new Date(fromDateStr) : null;
     const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
-    
+
     const contractSpecificRanks = new Map();
     if (fromDate && toDate) {
 
@@ -990,7 +994,7 @@ function renderCompanyView() {
         const leadRiskDataForLevel = appState.allData.filter(row => {
             const dateMatch = row.date && new Date(row.date) >= fromDate && new Date(row.date) <= toDate;
             if (!dateMatch || !entityTypeFilter(row)) return false;
-            
+
             if (state.currentEntity === 'team') {
                 return row.level === 'TEAM' || row.level === 'RECRUITER';
             }
@@ -999,7 +1003,7 @@ function renderCompanyView() {
 
         visibleItems.forEach(item => {
             const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
-        
+
             const filteredLeadRiskData = leadRiskDataForLevel.filter(row => {
                 const contractMatch = contractNames.includes(row.contract_type);
                 const companyMatch = row.company_name === 'ALL';
@@ -1043,17 +1047,19 @@ function renderCompanyView() {
 
             const itemTarget = companyTargets[item.id] || 0;
             const itemRanks = contractSpecificRanks.get(item.id) || new Map();
-            
+
             rankPercent = itemRanks.get(entityRow.entity) || 0;
 
+            // --- THIS IS THE FIX ---
+            // Only include entities that are explicitly set to TRUE in the activation matrix.
             const eligibleEntitiesForRank = allEntitiesList.filter(entity => {
                 const matrixKey = `${entity.id}_${item.id}`;
-                return companyMatrix[matrixKey] !== false;
+                return companyMatrix[matrixKey] === true;
             });
-            
+
             const totalRankScoreForItem = eligibleEntitiesForRank.reduce((sum, entity) => sum + (itemRanks.get(entity.name) || 0), 0);
             const isEligibleForProjection = eligibleEntitiesForRank.some(e => e.name === entityRow.entity);
-            
+
             if (isEligibleForProjection) {
                 if (totalRankScoreForItem > 0) {
                     const rankPercent = itemRanks.get(entityRow.entity) || 0;
@@ -1065,7 +1071,7 @@ function renderCompanyView() {
                     projLeads = Math.round(projDel / 100 * itemTarget);
                 }
             }
-            
+
             totalProjectedLeads += projLeads;
             projections[item.name] = { projLeads, rankPercent, projDel };
         });
@@ -1074,7 +1080,7 @@ function renderCompanyView() {
     });
 
     sortDelegationData(finalData);
-    
+
     const buildSortableTh = (label, sortKey, rowspan = 1, colspan = 1, extraClasses = '') => {
         const { key: sortKeyActive, direction: sortDir } = state.sortConfig;
         const isSorted = sortKeyActive === sortKey;
@@ -1091,7 +1097,7 @@ function renderCompanyView() {
         ${buildSortableTh('Rank Score', 'rank', 2)}
         ${buildSortableTh('Total Proj. Leads', 'totalProjectedLeads', 2)}
         ${buildSortableTh('Total Leads (7d)', 'leads7d.total', 2)}`;
-    
+
     let colorIndex = 1;
     visibleItems.forEach(item => {
         if (item.name.toUpperCase() === 'ALL') return;
@@ -1119,7 +1125,7 @@ function renderCompanyView() {
             <td class="col-rank-score">${item.rank.toFixed(1)}%</td>
             <td class="col-numeric"><strong>${item.totalProjectedLeads}</strong></td>
             <td class="expand-cell"><span class="col-numeric">${item.leads7d.total}</span><i class="fas fa-plus-circle fa-xs expand-btn" data-target="total-breakdown-${index}" title="Show total daily breakdown"></i></td>`;
-        
+
         let breakdownRowsHTML = `<tr class="daily-breakdown" id="total-breakdown-${index}"><td colspan="${totalColumns}" class="breakdown-cell"><div class="breakdown-grid">
             ${dayLabels.map((label, i) => `<div class="day-stat"><div class="day-label">${label}</div><div class="day-value">${item.leads7d.daily[i]}</div></div>`).join('')}
         </div></td></tr>`;
@@ -1131,7 +1137,7 @@ function renderCompanyView() {
 
             const contractIds = visItem.contractIds || [visItem.id];
             const histData = { count: 0, daily: Array(7).fill(0) };
-            
+
             contractIds.forEach(cId => {
                 const contract = state.settings.contracts.find(c => c.id === cId);
                 if (contract && item.contracts[contract.name]) {
@@ -1145,7 +1151,7 @@ function renderCompanyView() {
             const totalForVisItemAcrossAllEntities = totalLeadsByContractGroupAcrossAllEntities7d[visItem.name] || 0;
             const histPerc = totalForVisItemAcrossAllEntities > 0 ? (histData.count / totalForVisItemAcrossAllEntities) * 100 : 0;
             const projData = item.projections[visItem.name] || { projLeads: 0, rankPercent: 0, projDel: 0 };
-            
+
             item.projections[visItem.name].avg = histData.avg;
             item.projections[visItem.name].histPerc = histPerc;
 
@@ -1161,7 +1167,7 @@ function renderCompanyView() {
                 <td class="col-percent font-semibold text-sky-300">${projData.rankPercent.toFixed(1)}%</td>
                 <td class="col-percent col-proj-leads"><strong>${projData.projDel.toFixed(0)}%</strong></td>
                 <td class="col-numeric font-semibold ${projLeadsColor}">${projData.projLeads}</td>`;
-            
+
             breakdownRowsHTML += `<tr class="daily-breakdown ${colorClass}" id="contract-breakdown-${index}-${visItem.id}"><td colspan="${totalColumns}" class="breakdown-cell"><div class="breakdown-grid">
                 ${dayLabels.map((label, i) => `<div class="day-stat"><div class="day-label">${label}</div><div class="day-value">${histData.daily[i]}</div></div>`).join('')}
             </div></td></tr>`;
