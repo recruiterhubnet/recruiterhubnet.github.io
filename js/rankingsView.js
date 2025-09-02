@@ -3943,11 +3943,13 @@ function renderRankingsImagePreview() {
         
         if (matchedItem) {
             
-            const combinedData = [...state.allData, ...state.drugTestsData];
-            const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
-            const allProfilers = [...new Set(combinedData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
-            const activationTeams = allTeams.map((t, i) => ({ id: `t${i}`, name: t }));
-            const activationProfilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
+            const combinedData = [...state.allData, ...state.drugTestsData, ...state.recruiterData, ...state.profilerData];
+            const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))].sort();
+            const allProfilers = [...new Set(combinedData.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))].sort();
+            const sanitizeForId = (name) => name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            const activationTeams = allTeams.map(t => ({ id: sanitizeForId(t), name: t }));
+            const activationProfilers = allProfilers.map(p => ({ id: sanitizeForId(p), name: p }));
+
             const entityList = state.rankingsMode === 'team' ? activationTeams : activationProfilers;
 
             const activeEntityNames = new Set();
@@ -3955,7 +3957,7 @@ function renderRankingsImagePreview() {
                 const companyMatrix = savedActivationMatrix[company] || {};
                 entityList.forEach(entity => {
                     const matrixKey = `${entity.id}_${matchedItem.id}`;
-                    if (companyMatrix[matrixKey] !== false) {
+                    if (companyMatrix[matrixKey] === true) { // Use strict check
                         activeEntityNames.add(entity.name);
                     }
                 });
@@ -3985,8 +3987,10 @@ function renderRankingsImagePreview() {
                     const companyMatrix = savedActivationMatrix[company] || {};
                     const entityObj = entityList.find(p => p.name === entityRow.name);
                     
-                    if (entityObj && companyMatrix[`${entityObj.id}_${matchedItem.id}`] !== false) {
-                        const activeEntitiesInMatrix = entityList.filter(ent => companyMatrix[`${ent.id}_${matchedItem.id}`] !== false);
+                    if (entityObj && companyMatrix[`${entityObj.id}_${matchedItem.id}`] === true) {
+                        // --- THIS IS THE FIX ---
+                        // The list of entities for the denominator is now correctly filtered.
+                        const activeEntitiesInMatrix = entityList.filter(ent => companyMatrix[`${ent.id}_${matchedItem.id}`] === true);
                         const totalScore = activeEntitiesInMatrix.reduce((sum, ent) => sum + (contractRankMap.get(ent.name) || 0), 0);
                         const entityScore = contractRankMap.get(entityRow.name) || 0;
                         const delegationPercent = totalScore > 0 ? (entityScore / totalScore) * 100 : 0;
