@@ -1789,7 +1789,7 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 
 /* --- EXISTING VISUAL STYLES (UNCHANGED) --- */
 .rankings-table .th-main-group, .rankings-table .th-effort-group, .rankings-table .th-compliance-group, .rankings-table .th-arrivals-group { height: 30px; }
-.rankings-table .th-sub-group, .rankings-table .th-col-label { height: 25px; }
+.rankings-table .th-sub-group, .rankings-table .th-col-label { height: 35px; }
 .rankings-table .th-base { font-size: 0.7rem; font-weight: 500; border-bottom: 1px solid #4b5563; }
 .rankings-table .th-main-group { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; border-bottom: 1px solid #4b5563; }
 .rankings-table .th-sub-group { font-size: 0.7rem; font-weight: 600; border-bottom: 1px solid #4b5563; }
