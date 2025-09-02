@@ -794,13 +794,11 @@ function openRankingWeightsModal(weightsToLoad = null) {
     const complianceChildren = isProfilerMode ? [
         { key: 'tte_percentile', label: 'Time To Engage', icon: 'fa-user-clock' },
         { key: 'leads_reached_percentile', label: 'Leads Reached', icon: 'fa-address-book' },
-        { key: 'median_call_duration_percentile', label: 'Median Call Duration', icon: 'fa-headset' },
         { key: 'profiles_score', title: 'Profile Score', icon: 'fa-id-card' },
         { key: 'documents_score', title: 'Documents Score', icon: 'fa-file-alt' }
     ] : [
         { key: 'tte_percentile', label: 'Time To Engage', icon: 'fa-user-clock' },
         { key: 'leads_reached_percentile', label: 'Leads Reached', icon: 'fa-address-book' },
-        { key: 'median_call_duration_percentile', label: 'Median Call Duration', icon: 'fa-headset' },
         { key: 'profiles_completed_percentile', label: 'Profiles Closed', icon: 'fa-id-card' },
         { key: 'documents_score', title: 'Documents Score', icon: 'fa-file-alt' },
         { key: 'past_due_ratio_percentile', label: 'Past Due Ratio', icon: 'fa-calendar-times' },
@@ -831,7 +829,7 @@ function openRankingWeightsModal(weightsToLoad = null) {
             { key: 'median_time_to_profile_percentile', label: 'Time to Profile', icon: 'fa-user-clock' }
         ]},
         { key: 'compliance_score', children: complianceChildren },
-        { key: 'calls_score', children: [ { key: 'outbound_calls_percentile', label: 'Total' }, { key: 'unique_calls_percentile', label: 'Unique' }, { key: 'call_duration_seconds_percentile', label: 'Duration' } ]},
+        { key: 'calls_score', children: [ { key: 'outbound_calls_percentile', label: 'Total' }, { key: 'unique_calls_percentile', label: 'Unique' }, { key: 'call_duration_seconds_percentile', label: 'Duration' }, { key: 'median_call_duration_percentile', label: 'Median' } ]},
         { key: 'sms_score', children: [ { key: 'outbound_sms_percentile', label: 'Total' }, { key: 'unique_sms_percentile', label: 'Unique' } ]},
         { key: 'profiles_score', children: [ { key: 'profiles_profiled_percentile', label: 'Profiled' }, { key: 'profiles_completed_percentile', label: 'Completed' } ]},
         { key: 'documents_score', children: [ { key: 'mvr_percentile', label: 'MVR' }, { key: 'psp_percentile', label: 'PSP' }, { key: 'cdl_percentile', label: 'CDL' } ]},
@@ -1920,7 +1918,8 @@ if (mode !== 'profiler') {
 
         entry.calls_score = (entry.outbound_calls_percentile * (callsWeights.outbound_calls_percentile || 0) +
                              entry.unique_calls_percentile * (callsWeights.unique_calls_percentile || 0) +
-                             entry.call_duration_seconds_percentile * (callsWeights.call_duration_seconds_percentile || 0)) / 100;
+                             entry.call_duration_seconds_percentile * (callsWeights.call_duration_seconds_percentile || 0) +
+                             entry.median_call_duration_percentile * (callsWeights.median_call_duration_percentile || 0)) / 100;
 
         entry.sms_score = (entry.outbound_sms_percentile * (smsWeights.outbound_sms_percentile || 0) +
                            entry.unique_sms_percentile * (smsWeights.unique_sms_percentile || 0)) / 100;
@@ -1942,15 +1941,13 @@ if (mode !== 'profiler') {
             entry.compliance_score = (entry.tte_percentile * (complianceWeights.tte_percentile || 0) +
                                       entry.leads_reached_percentile * (complianceWeights.leads_reached_percentile || 0) +
                                       entry.profiles_score * (complianceWeights.profiles_score || 0) +
-                                      entry.documents_score * (complianceWeights.documents_score || 0) +
-                                      entry.median_call_duration_percentile * (complianceWeights.median_call_duration_percentile || 0)) / 100;
+                                      entry.documents_score * (complianceWeights.documents_score || 0)) / 100;
                                     } else { // Recruiter or Team mode
                                         entry.compliance_score = (entry.tte_percentile * (complianceWeights.tte_percentile || 0) +
                                                                   entry.leads_reached_percentile * (complianceWeights.leads_reached_percentile || 0) +
                                                                   entry.documents_score * (complianceWeights.documents_score || 0) +
                                                                   entry.past_due_ratio_percentile * (complianceWeights.past_due_ratio_percentile || 0) +
                                                                   entry.profiles_completed_percentile * (complianceWeights.profiles_completed_percentile || 0) +
-                                                                  entry.median_call_duration_percentile * (complianceWeights.median_call_duration_percentile || 0) +
                                                                   entry.tenure_percentile * (complianceWeights.tenure_percentile || 0)) / 100;
                                         entry.profiles_score = 0;
                                     }
@@ -2116,10 +2113,10 @@ function renderRankingsHeaders() {
             ? "A weighted score based on communication efforts, including calls, SMS, note length, active days, and time to profile. Higher is better."
             : "A weighted score based on communication efforts, including calls, SMS, and active days. Higher is better.",
         compliance_score: isProfiler
-            ? "A weighted score measuring adherence to protocols, including Time to Engage, Leads Reached, Profile Score, Documents Score, and Median Call Duration. Higher is better."
-            : "A weighted score measuring adherence to protocols, including Time to Engage, Leads Reached, Profile Completion, Documents Score, Past Due Ratio, and Median Call Duration. Higher is better.",
+            ? "A weighted score measuring adherence to protocols, including Time to Engage, Leads Reached, Profile Score, and Documents Score. Higher is better."
+            : "A weighted score measuring adherence to protocols, including Time to Engage, Leads Reached, Profile Completion, Documents Score, and Past Due Ratio. Higher is better.",
         arrivals_score: "A weighted score based on successful outcomes, including drug tests and onboarding. Higher is better.",
-        calls_score: "A weighted score reflecting call activity, combining total calls, unique calls, and total call duration. Higher is better.",
+        calls_score: "A weighted score reflecting call activity, combining total calls, unique calls, total call duration, and median call duration. Higher is better.",
         sms_score: "A weighted score reflecting SMS activity, combining total and unique SMS sent. Higher is better.",
         outbound_calls: perLead.outbound_calls ? "The average number of outbound calls made per lead assigned. Higher is better." : "The total number of outbound calls made. Higher is better.",
         unique_calls: perLead.unique_calls ? "The average number of unique phone numbers contacted per lead assigned. Higher is better." : "The total number of unique phone numbers contacted via an outbound call. Higher is better.",
@@ -2164,7 +2161,7 @@ function renderRankingsHeaders() {
                 cssClass: 'th-effort-group',
                 scoreKey: 'effort_score',
                 subGroups: [
-                    { label: 'CALLS', scoreKey: 'calls_score', columns: ['outbound_calls', 'unique_calls', 'call_duration_seconds'] },
+                    { label: 'CALLS', scoreKey: 'calls_score', columns: ['outbound_calls', 'unique_calls', 'call_duration_seconds', 'median_call_duration'] },
                     { label: 'SMS', scoreKey: 'sms_score', columns: ['outbound_sms', 'unique_sms'] },
                     { label: 'NOTES', columns: ['profiler_note_lenght_all'], hidden: mode !== 'profiler' },
                     { label: 'ACTIVE DAYS', columns: ['active_days'] },
@@ -2178,7 +2175,6 @@ function renderRankingsHeaders() {
                 subGroups: [
                     { label: 'TIME TO ENGAGE', columns: ['tte_value'] },
                     { label: 'LEADS REACHED', columns: ['leads_reached'] },
-                    { label: 'MEDIAN CALL DURATION', columns: ['median_call_duration'] },
                     { label: 'PROFILE COMPLETION', columns: ['profiles_completed'], hidden: mode === 'profiler' },
                     { label: 'PROFILE COMPLETION', scoreKey: 'profiles_score', columns: ['profiles_profiled', 'profiles_completed'], hidden: mode !== 'profiler' },
                     { label: 'DOCUMENTS', scoreKey: 'documents_score', columns: ['mvr', 'psp', 'cdl'] },
@@ -2212,7 +2208,7 @@ function renderRankingsHeaders() {
             active_days: { label: 'Days', type: 'number' },
             leads_reached: { label: 'Reached', type: 'number' },
             tte_value: { label: 'TTE', type: 'number' },
-            median_call_duration: { label: 'Duration', type: 'number' },
+            median_call_duration: { label: 'Median', type: 'number' },
             past_due_ratio: { label: 'Past Due %', type: 'number' },
             total_drug_tests: { label: 'DT', type: 'number' },
             onboarded: { label: 'Onboarded', type: 'number' },
@@ -2366,6 +2362,7 @@ function renderRankingsTable(data) {
         'outbound_calls', 'outbound_calls_percentile',
         'unique_calls', 'unique_calls_percentile',
         'call_duration_seconds', 'call_duration_seconds_percentile',
+        'median_call_duration', 'median_call_duration_percentile',
         'sms_score',
         'outbound_sms', 'outbound_sms_percentile',
         'unique_sms', 'unique_sms_percentile',
@@ -2375,7 +2372,6 @@ function renderRankingsTable(data) {
         'compliance_score',
         'tte_value', 'tte_percentile',
         'leads_reached', 'leads_reached_percentile',
-        'median_call_duration', 'median_call_duration_percentile',
         ...(mode !== 'profiler' ? ['profiles_completed', 'profiles_completed_percentile'] : []),
         ...(mode === 'profiler' ? ['profiles_score', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile'] : []),
         'documents_score',
@@ -2394,7 +2390,7 @@ function renderRankingsTable(data) {
         tableBody.innerHTML = `<tr><td colspan="${columnsInOrder.length}" class="text-center p-8 text-gray-500">No matching records found.</td></tr>`;
         return;
     }
-    
+
     const settings = mode === 'profiler' ? state.rankingSettingsProfiler : state.rankingSettings;
     const perLeadSettings = settings.perLeadMetrics;
 
@@ -2448,7 +2444,7 @@ function renderRankingsTable(data) {
 
             if (key === 'effort_score' || key === 'compliance_score' || key === 'arrivals_score' || key === 'final_score') {
                 cellClass += ' border-l-main';
-            } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'median_call_duration', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'median_tenure', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
+            } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'median_tenure', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
                 cellClass += ' border-l-sub-group';
             }
 
@@ -2478,6 +2474,7 @@ function renderRankingsFooter(data) {
         'outbound_calls', 'outbound_calls_percentile',
         'unique_calls', 'unique_calls_percentile',
         'call_duration_seconds', 'call_duration_seconds_percentile',
+        'median_call_duration', 'median_call_duration_percentile',
         'sms_score',
         'outbound_sms', 'outbound_sms_percentile',
         'unique_sms', 'unique_sms_percentile',
@@ -2487,7 +2484,6 @@ function renderRankingsFooter(data) {
         'compliance_score',
         'tte_value', 'tte_percentile',
         'leads_reached', 'leads_reached_percentile',
-        'median_call_duration', 'median_call_duration_percentile',
         ...(mode !== 'profiler' ? ['profiles_completed', 'profiles_completed_percentile'] : []),
         ...(mode === 'profiler' ? ['profiles_score', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile'] : []),
         'documents_score',
@@ -2569,7 +2565,7 @@ function renderRankingsFooter(data) {
 
         if (key === 'effort_score' || key === 'compliance_score' || key === 'arrivals_score' || key === 'final_score') {
             cellClasses += ' border-l-main';
-        } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'median_call_duration', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'median_tenure', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
+        } else if (['calls_score', 'sms_score', 'profiler_note_lenght_all', 'active_days', 'median_time_to_profile', 'tte_value', 'leads_reached', 'profiles_score', 'profiles_completed', 'documents_score', 'past_due_ratio', 'median_tenure', 'total_drug_tests', 'onboarded', 'drug_tests_per_hot_lead', 'onboarded_per_hot_lead'].includes(key)) {
             cellClasses += ' border-l-sub-group';
         }
 
@@ -2882,6 +2878,7 @@ function populateEffortTab(entity) {
         uniqueCallsPerLead: { calc: e => totalLeadsAssigned > 0 ? ((dataSource === 'all' ? e.original_unique_calls : e.unique_calls) / totalLeadsAssigned) : 0 },
         callDuration: { calc: e => dataSource === 'all' ? e.original_call_duration_seconds : e.call_duration_seconds },
         durationPerLead: { calc: e => totalLeadsAssigned > 0 ? ((dataSource === 'all' ? e.original_call_duration_seconds : e.call_duration_seconds) / totalLeadsAssigned) : 0 },
+        medianCallDuration: { calc: e => e.median_call_duration },
         totalSms: { calc: e => dataSource === 'all' ? e.original_outbound_sms : e.outbound_sms },
         smsPerLead: { calc: e => totalLeadsAssigned > 0 ? ((dataSource === 'all' ? e.original_outbound_sms : e.outbound_sms) / totalLeadsAssigned) : 0 },
         uniqueSms: { calc: e => dataSource === 'all' ? e.original_unique_sms : e.unique_sms },
@@ -2913,6 +2910,7 @@ function populateEffortTab(entity) {
         <tr><td>Unique Calls Per Lead</td><td>${formatNumber(uniqueCallsPerLead, 2)}<span class="rank-display">(Rank: ${ranks.uniqueCallsPerLead})</span></td></tr>
         <tr><td>Call Duration</td><td>${formatDuration(call_duration_seconds)}<span class="rank-display">(Rank: ${ranks.callDuration})</span></td></tr>
         <tr><td>Duration Per Lead</td><td>${formatDuration(durationPerLead)}<span class="rank-display">(Rank: ${ranks.durationPerLead})</span></td></tr>
+        <tr><td>Median Call Duration</td><td>${formatDuration(entity.median_call_duration)}<span class="rank-display">(Rank: ${ranks.medianCallDuration})</span></td></tr>
         <tr><td>Total SMS</td><td>${formatNumber(sms, 0)}<span class="rank-display">(Rank: ${ranks.totalSms})</span></td></tr>
         <tr><td>SMS Per Lead</td><td>${formatNumber(smsPerLead, 2)}<span class="rank-display">(Rank: ${ranks.smsPerLead})</span></td></tr>
         <tr><td>Unique SMS</td><td>${formatNumber(unique_sms, 0)}<span class="rank-display">(Rank: ${ranks.uniqueSms})</span></td></tr>
@@ -3028,8 +3026,7 @@ function populateComplianceTab(entity) {
         psp: getMetricRank('psp'),
         cdl: getMetricRank('cdl'),
         profiles_profiled: getMetricRank('profiles_profiled'),
-        profiles_completed: getMetricRank('profiles_completed'),
-        median_call_duration: getMetricRank('median_call_duration')
+        profiles_completed: getMetricRank('profiles_completed')
     };
     // --- RANK CALCULATION END ---
 
@@ -3056,7 +3053,6 @@ function populateComplianceTab(entity) {
     let tableRowsHtml = `
         <tr><td>Avg. TTE (${ttePercentileLabel})</td><td>${!isFinite(standardTTE) ? '∞' : formatDuration(standardTTE)}<span class="rank-display">(Rank: ${ranks.standard_tte})</span></td></tr>
         <tr><td>Avg. Leads Reached</td><td>${formatNumber(standardLR, 1)}%<span class="rank-display">(Rank: ${ranks.standard_lr})</span></td></tr>
-        <tr><td>Median Call Duration</td><td>${formatDuration(entity.median_call_duration)}<span class="rank-display">(Rank: ${ranks.median_call_duration})</span></td></tr>
     `;
 
     if (isProfiler) {
@@ -3788,8 +3784,8 @@ function openRankingsImageModal() {
     const groups = {
         "Key Info": ['rank', 'name', 'team', 'num_recruiters', 'recycled_leads', 'hot_leads_assigned', 'final_score', 'delegation_percent', ...companyDelegationKeys, ...prevCompanyDelegationKeys, 'projected_hot', 'projected_recycled', 'proj_hot_diff', 'proj_recycled_diff'],
         "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
-        "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
-        "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'median_call_duration', 'median_call_duration_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
+        "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'median_call_duration', 'median_call_duration_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
+        "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
         "Arrivals Metrics": ['total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile', 'drug_tests_per_hot_lead', 'drug_tests_per_hot_lead_percentile', 'onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile']
     };
 
