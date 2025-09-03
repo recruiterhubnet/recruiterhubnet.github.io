@@ -2144,6 +2144,7 @@ function renderRankingsHeaders() {
         median_tenure: "The median tenure (in days) of drivers who arrived within the date range defined in Advanced Settings. Higher is better."
     };
 
+    // ================== START: THIS IS THE FIX ==================
     const headerConfig = {
         base: [
             { key: 'rank', label: 'RANK', type: 'number' },
@@ -2200,17 +2201,17 @@ function renderRankingsHeaders() {
             arrivals_score: { label: 'Arrivals Score', type: 'number' },
             calls_score: { label: 'Calls Score', type: 'number' },
             sms_score: { label: 'SMS Score', type: 'number' },
-            outbound_calls: { label: 'Total', type: 'number' },
-            unique_calls: { label: 'Unq', type: 'number' },
-            call_duration_seconds: { label: 'Duration', type: 'number' },
-            outbound_sms: { label: 'Total', type: 'number' },
-            unique_sms: { label: 'Unq', type: 'number' },
-            active_days: { label: 'Days', type: 'number' },
-            leads_reached: { label: 'Reached', type: 'number' },
+            outbound_calls: { label: 'Total Calls', type: 'number' },
+            unique_calls: { label: 'Unique Calls', type: 'number' },
+            call_duration_seconds: { label: 'Call Duration', type: 'number' },
+            outbound_sms: { label: 'Total SMS', type: 'number' },
+            unique_sms: { label: 'Unique SMS', type: 'number' },
+            active_days: { label: 'Active Days', type: 'number' },
+            leads_reached: { label: 'Leads Reached', type: 'number' },
             tte_value: { label: 'TTE', type: 'number' },
-            median_call_duration: { label: 'Median', type: 'number' },
+            median_call_duration: { label: 'Median Duration', type: 'number' },
             past_due_ratio: { label: 'Past Due %', type: 'number' },
-            total_drug_tests: { label: 'DT', type: 'number' },
+            total_drug_tests: { label: 'Drug Tests', type: 'number' },
             onboarded: { label: 'Onboarded', type: 'number' },
             drug_tests_per_hot_lead: { label: 'DT/Hot', type: 'number' },
             onboarded_per_hot_lead: { label: 'Onb/Hot', type: 'number' },
@@ -2222,18 +2223,19 @@ function renderRankingsHeaders() {
             psp: { label: 'PSP', type: 'number' },
             cdl: { label: 'CDL', type: 'number' },
             profiler_note_lenght_all: { label: 'Note Length', type: 'number' },
-            median_time_to_profile: { label: 'Time', type: 'number' },
+            median_time_to_profile: { label: 'Time to Profile', type: 'number' },
             median_tenure: { label: 'Tenure', type: 'number' },
         }
     };
+    // =================== END: THIS IS THE FIX ===================
 
     const dynamicLabels = {
-        outbound_calls: { label: perLead.outbound_calls ? 'Calls/Ld' : 'Total' },
-        unique_calls: { label: perLead.unique_calls ? 'Unq/Ld' : 'Unq' },
-        call_duration_seconds: { label: perLead.call_duration_seconds ? 'Dur/Ld' : 'Duration' },
-        outbound_sms: { label: perLead.outbound_sms ? 'SMS/Ld' : 'Total' },
-        unique_sms: { label: perLead.unique_sms ? 'Unq/Ld' : 'Unq' },
-        total_drug_tests: { label: perLead.total_drug_tests ? 'DT/Ld' : 'DT' },
+        outbound_calls: { label: perLead.outbound_calls ? 'Calls/Ld' : 'Total Calls' },
+        unique_calls: { label: perLead.unique_calls ? 'Unq Calls/Ld' : 'Unique Calls' },
+        call_duration_seconds: { label: perLead.call_duration_seconds ? 'Dur/Ld' : 'Call Duration' },
+        outbound_sms: { label: perLead.outbound_sms ? 'SMS/Ld' : 'Total SMS' },
+        unique_sms: { label: perLead.unique_sms ? 'Unq SMS/Ld' : 'Unique SMS' },
+        total_drug_tests: { label: perLead.total_drug_tests ? 'DT/Ld' : 'Drug Tests' },
         onboarded: { label: perLead.onboarded ? 'Onb/Ld' : 'Onboarded' },
         profiles_profiled: { label: perLead.profiles_profiled ? 'Prof/Ld' : 'Profiled' },
         profiles_completed: { label: perLead.profiles_completed ? 'Comp/Ld' : 'Completed' },
@@ -4163,7 +4165,6 @@ function getRankingsHeaderConfig() {
     const perLead = settings.perLeadMetrics;
 
     const baseConfig = {
-        // ... (this is the same large headerConfig object from renderRankingsHeaders)
         base: [
             { key: 'rank', label: 'RANK', type: 'number' },
             { key: 'name', label: mode === 'team' ? 'TEAM' : 'RECRUITER', type: 'string' },
@@ -4179,7 +4180,7 @@ function getRankingsHeaderConfig() {
                 cssClass: 'th-effort-group',
                 scoreKey: 'effort_score',
                 subGroups: [
-                    { label: 'CALLS', scoreKey: 'calls_score', columns: ['outbound_calls', 'unique_calls', 'call_duration_seconds'] },
+                    { label: 'CALLS', scoreKey: 'calls_score', columns: ['outbound_calls', 'unique_calls', 'call_duration_seconds', 'median_call_duration'] },
                     { label: 'SMS', scoreKey: 'sms_score', columns: ['outbound_sms', 'unique_sms'] },
                     { label: 'NOTES', columns: ['profiler_note_lenght_all'], hidden: mode !== 'profiler' },
                     { label: 'ACTIVE DAYS', columns: ['active_days'] },
@@ -4193,7 +4194,6 @@ function getRankingsHeaderConfig() {
                 subGroups: [
                     { label: 'TIME TO ENGAGE', columns: ['tte_value'] },
                     { label: 'LEADS REACHED', columns: ['leads_reached'] },
-                    { label: 'MEDIAN CALL DURATION', columns: ['median_call_duration'] },
                     { label: 'PROFILE COMPLETION', columns: ['profiles_completed'], hidden: mode === 'profiler' },
                     { label: 'PROFILE COMPLETION', scoreKey: 'profiles_score', columns: ['profiles_profiled', 'profiles_completed'], hidden: mode !== 'profiler' },
                     { label: 'DOCUMENTS', scoreKey: 'documents_score', columns: ['mvr', 'psp', 'cdl'] },
@@ -4210,36 +4210,50 @@ function getRankingsHeaderConfig() {
                 ]
             }
         ],
+        // ================== START: THIS IS THE FIX ==================
         columnDetails: {
-            // ... (full columnDetails object from renderRankingsHeaders)
             rank: { label: 'RANK' }, name: { label: 'NAME' }, team: { label: 'TEAM' }, num_recruiters: { label: '# RECS'},
             new_leads_assigned_on_date: { label: 'NEW' }, old_leads_assigned_on_date: { label: 'OLD'},
             hot_leads_assigned: { label: 'HOT' }, fresh_leads_assigned_on_date: { label: 'FRESH'},
             final_score: { label: 'Final Score' }, effort_score: { label: 'Effort Score' }, compliance_score: { label: 'Compliance Score' },
             arrivals_score: { label: 'Arrivals Score' }, calls_score: { label: 'Calls Score' }, sms_score: { label: 'SMS Score' },
-            outbound_calls: { label: 'Total' }, unique_calls: { label: 'Unq' }, call_duration_seconds: { label: 'Duration' },
-            outbound_sms: { label: 'Total' }, unique_sms: { label: 'Unq' }, active_days: { label: 'Days' },
-            leads_reached: { label: 'Reached' }, tte_value: { label: 'TTE' }, median_call_duration: { label: 'Duration' },
-            past_due_ratio: { label: 'Past Due %' }, total_drug_tests: { label: 'DT' }, onboarded: { label: 'Onboarded' },
-            profiles_score: { label: 'Profiles Score' }, profiles_profiled: { label: 'Profiled' },
-            profiles_completed: { label: 'Completed' }, documents_score: { label: 'Docs Score' }, mvr: { label: 'MVR' },
-            psp: { label: 'PSP' }, cdl: { label: 'CDL' }, profiler_note_lenght_all: { label: 'Note Length' },
-            median_time_to_profile: { label: 'Time' },
+            outbound_calls: { label: 'Total Calls' }, 
+            unique_calls: { label: 'Unique Calls' }, 
+            call_duration_seconds: { label: 'Call Duration' },
+            outbound_sms: { label: 'Total SMS' }, 
+            unique_sms: { label: 'Unique SMS' }, 
+            active_days: { label: 'Active Days' },
+            leads_reached: { label: 'Leads Reached' }, 
+            tte_value: { label: 'TTE' }, 
+            median_call_duration: { label: 'Median Duration' },
+            past_due_ratio: { label: 'Past Due %' }, 
+            total_drug_tests: { label: 'Drug Tests' }, 
+            onboarded: { label: 'Onboarded' },
+            profiles_score: { label: 'Profiles Score' }, 
+            profiles_profiled: { label: 'Profiled' },
+            profiles_completed: { label: 'Completed' }, 
+            documents_score: { label: 'Docs Score' }, 
+            mvr: { label: 'MVR' },
+            psp: { label: 'PSP' }, 
+            cdl: { label: 'CDL' }, 
+            profiler_note_lenght_all: { label: 'Note Length' },
+            median_time_to_profile: { label: 'Time to Profile' },
         }
     };
     
     // Apply dynamic labels based on settings
     const dynamicLabels = {
-        outbound_calls: { label: perLead.outbound_calls ? 'Calls/Ld' : 'Total' },
-        unique_calls: { label: perLead.unique_calls ? 'Unq/Ld' : 'Unq' },
-        call_duration_seconds: { label: perLead.call_duration_seconds ? 'Dur/Ld' : 'Duration' },
-        outbound_sms: { label: perLead.outbound_sms ? 'SMS/Ld' : 'Total' },
-        unique_sms: { label: perLead.unique_sms ? 'Unq/Ld' : 'Unq' },
-        total_drug_tests: { label: perLead.total_drug_tests ? 'DT/Ld' : 'DT' },
+        outbound_calls: { label: perLead.outbound_calls ? 'Total Calls/Ld' : 'Total Calls' },
+        unique_calls: { label: perLead.unique_calls ? 'Unique Calls/Ld' : 'Unique Calls' },
+        call_duration_seconds: { label: perLead.call_duration_seconds ? 'Duration/Ld' : 'Call Duration' },
+        outbound_sms: { label: perLead.outbound_sms ? 'Total SMS/Ld' : 'Total SMS' },
+        unique_sms: { label: perLead.unique_sms ? 'Unique SMS/Ld' : 'Unique SMS' },
+        total_drug_tests: { label: perLead.total_drug_tests ? 'DT/Ld' : 'Drug Tests' },
         onboarded: { label: perLead.onboarded ? 'Onb/Ld' : 'Onboarded' },
         profiles_profiled: { label: perLead.profiles_profiled ? 'Prof/Ld' : 'Profiled' },
         profiles_completed: { label: perLead.profiles_completed ? 'Comp/Ld' : 'Completed' },
     };
+    // =================== END: THIS IS THE FIX ===================
 
     for (const key in dynamicLabels) {
         if (baseConfig.columnDetails[key]) {
