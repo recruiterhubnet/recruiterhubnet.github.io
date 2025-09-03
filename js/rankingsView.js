@@ -3669,67 +3669,40 @@ function openRankingsImageModal() {
     
     let statsHtmlBlock = '';
     
+    // ================== START: THIS IS THE FIX ==================
     if (fromDateStr && toDateStr) {
         const fromDate = new Date(fromDateStr + 'T00:00:00');
         const toDate = new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1));
         const selectedContracts = getSelectedValues(document.getElementById('rankingsContractFilterDropdown'));
-        
-        const savedDelegationSettings = JSON.parse(localStorage.getItem('delegationSettings')) || { contracts: [], groups: [] };
-        const savedActivationMatrix = JSON.parse(localStorage.getItem('delegationActivation')) || {};
-
-        let matchedItem = null;
-        if (selectedContracts.length === 1 && selectedContracts[0].toUpperCase() !== 'ALL') {
-            matchedItem = savedDelegationSettings.contracts.find(c => c.name === selectedContracts[0]);
-        } else if (selectedContracts.length > 1) {
-            const selectedSet = new Set(selectedContracts.sort());
-            const contractIdToNameMap = new Map(savedDelegationSettings.contracts.map(c => [c.id, c.name]));
-            matchedItem = savedDelegationSettings.groups.find(group => {
-                const groupContractNames = new Set(group.contractIds.map(id => contractIdToNameMap.get(id)).sort());
-                return selectedSet.size === groupContractNames.size && [...selectedSet].every(name => groupContractNames.has(name));
-            });
-        }
 
         const companyStats = {};
         allCompanies.forEach(c => {
             companyStats[c] = { hot_leads: 0, recycled_leads: 0 };
         });
 
-        if (matchedItem) {
-            const combinedDataForIds = [...state.allData, ...state.drugTestsData];
-            const allTeams = [...new Set(combinedDataForIds.map(d => d.team_name).filter(d => d && d !== 'Profilers'))];
-            const allProfilers = [...new Set(combinedDataForIds.filter(d => d.team_name === 'Profilers').map(d => d.recruiter_name).filter(Boolean))];
-            const activationTeams = allTeams.map((t, i) => ({ id: `t${i}`, name: t }));
-            const activationProfilers = allProfilers.map((p, i) => ({ id: `p${i}`, name: p }));
+        // Filter the data based on the new, simplified criteria
+        const dataForStats = state.allData.filter(row => {
+            // 1. Only include TEAM level aggregation data
+            if (row.level !== 'TEAM') {
+                return false;
+            }
+            // 2. Check if the row is within the selected date range
+            const rowDate = new Date(row.date);
+            const dateMatch = rowDate >= fromDate && rowDate <= toDate;
 
-            const entityList = state.rankingsMode === 'team' 
-                ? activationTeams
-                : activationProfilers;
+            // 3. Check if the contract matches the selection
+            const contractMatch = selectedContracts.length === 0 || selectedContracts.includes('ALL') || selectedContracts.includes(row.contract_type);
+            
+            return dateMatch && contractMatch;
+        });
 
-            const activeEntityNames = new Set();
-            entityList.forEach(entity => {
-                const isActiveInAnyCompany = allCompanies.some(company => {
-                    const companyMatrix = savedActivationMatrix[company] || {};
-                    return companyMatrix[`${entity.id}_${matchedItem.id}`] !== false;
-                });
-                if (isActiveInAnyCompany) {
-                    activeEntityNames.add(entity.name);
-                }
-            });
-
-            const currentWeekData = state.allData.filter(row => {
-                const rowDate = new Date(row.date);
-                const entityName = state.rankingsMode === 'team' ? row.team_name : row.recruiter_name;
-                const contractMatch = selectedContracts.length === 0 || selectedContracts.includes(row.contract_type) || selectedContracts.includes('ALL');
-                return rowDate >= fromDate && rowDate <= toDate && contractMatch && activeEntityNames.has(entityName);
-            });
-
-            currentWeekData.forEach(row => {
-                if (companyStats[row.company_name]) {
-                    companyStats[row.company_name].hot_leads += row.hot_leads_assigned || 0;
-                    companyStats[row.company_name].recycled_leads += row.recycled_leads || 0;
-                }
-            });
-        }
+        // Sum the leads for each company from the filtered data
+        dataForStats.forEach(row => {
+            if (companyStats[row.company_name]) {
+                companyStats[row.company_name].hot_leads += row.hot_leads_assigned || 0;
+                companyStats[row.company_name].recycled_leads += row.recycled_leads || 0;
+            }
+        });
 
         const statsHtml = allCompanies.map(company => `
             <div class="flex justify-between">
@@ -3744,13 +3717,15 @@ function openRankingsImageModal() {
         statsHtmlBlock = `
             <div>
                 <div class="p-3 bg-gray-800/50 rounded-lg text-xs text-gray-400 space-y-2">
-                    <div class="font-semibold text-gray-300">Hot/Recycled Leads (Active Delegation)</div>
-                    ${statsHtml || '<p class="text-center text-gray-500">No active entities for this contract.</p>'}
+                    <div class="font-semibold text-gray-300">Hot/Recycled Leads (All Teams)</div>
+                    ${statsHtml || '<p class="text-center text-gray-500">No data for selected filters.</p>'}
                 </div>
             </div>
         `;
         settingsContainer.dataset.companyStats = JSON.stringify(companyStats);
     }
+    // =================== END: THIS IS THE FIX ===================
+
 
     const columnLabels = {};
     headerConfig.base.forEach(c => columnLabels[c.key] = c.label);
