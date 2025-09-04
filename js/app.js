@@ -145,12 +145,36 @@ function initializeApp() {
         })).sort((a, b) => b.date - a.date) : [];
 
         state.workingHoursData = data.whData || [];
-        state.arrivalsData = data.arrivalsData ? data.arrivalsData.map(row => ({
-            ...row,
-            date: new Date(row.date),
-            total_arrivals: 1,
-            tenure: row.tenure ? Number(row.tenure) : null
-        })) : [];
+        state.arrivalsData = data.arrivalsData ? data.arrivalsData.flatMap(row => {
+            const results = [];
+            const commonData = {
+                date: new Date(row.date), // Creates the correct Date object
+                total_arrivals: 1,
+                tenure: row.tenure ? Number(row.tenure) : null
+            };
+        
+            // If a recruiter is listed, create an entry for them.
+            if (row.recruiter_name) {
+                results.push({
+                    ...row,         // Spread original data first
+                    ...commonData,  // THEN spread commonData, which overwrites the date string
+                    recruiter_name: row.recruiter_name,
+                    team_name: row.team_name
+                });
+            }
+        
+            // If a profiler is listed, create a separate entry for them.
+            if (row.profiler) {
+                results.push({
+                    ...row,         // Spread original data first
+                    ...commonData,  // THEN spread commonData, which overwrites the date string
+                    recruiter_name: row.profiler,
+                    team_name: 'Profilers'
+                });
+            }
+        
+            return results;
+        }) : [];
         state.drugTestsData = data.drugTestsData ? data.drugTestsData.map(row => ({
             ...row,
             date: new Date(row.date),
