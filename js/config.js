@@ -3,7 +3,7 @@
 export const leadRiskAppScriptUrl = 'https://script.google.com/macros/s/AKfycbwIrgabykawAUfcIwwpASAYatGwQylCVqudgBYPqHP1H3UoWpVoN9QMEbAnLU-uc3uS/exec';
 export const workingHoursAppScriptUrl = 'https://script.google.com/macros/s/AKfycbz2EvNYMZ73BtO_nQjiteWOkOTtAQ0JIyTqYZr8XakJKYNGzA6-YFxuf2U5UDwhWqXM/exec';
 //This is the new URL for arrivals data
-export const arrivalsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbzJZcEkKvY2iQaEi_Eax0vd06Dxed9_mMDJ2Eq0XuF1MfK1b9zcohMCo4C3pp3YT66R/exec'; 
+export const arrivalsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbxdQGwKGko6KVXlv_jN42cd_vunqDxBriqzmu1WO5bBKxSqldfAdePAkUKjseBkNHyk/exec'; 
 //This is the old URL, now specifically for drug tests
 export const drugTestsAppScriptUrl = 'https://script.google.com/macros/s/AKfycbz5pq5zA_iKlK98DmEyEGWRv0H9czJOZYku_T2qWA-O5NroRAHJh1_-1W8PCpGOp9SY/exec';
 export const mvrPspCdlAppScriptUrl = 'https://script.google.com/macros/s/AKfycbynW5F5JryEebN43IR6Jqs4A-ql_G2DzdMSSy_aXg3iGmtpTY5duKKK_IJUUIuWbdPrgA/exec'; 
@@ -78,3 +78,4 @@ export const tteColumnsConfig = {
     p90: { label: 'P90', type: 'number' },
     p100: { label: 'P100', type: 'number' }
 };
+
