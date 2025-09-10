@@ -810,9 +810,7 @@ function openRankingWeightsModal(weightsToLoad = null) {
         { key: 'onboarded_percentile', label: 'Onboarded' }
     ] : [
         { key: 'total_drug_tests_percentile', label: 'Drug Tests' }, 
-        { key: 'onboarded_percentile', label: 'Onboarded' },
-        { key: 'drug_tests_per_hot_lead_percentile', label: 'DT / Hot Lead'},
-        { key: 'onboarded_per_hot_lead_percentile', label: 'Onboarded / Hot Lead'}
+        { key: 'onboarded_percentile', label: 'Onboarded' }
     ];
 
     const structure = [
@@ -1833,8 +1831,7 @@ if (mode !== 'profiler') {
             }
            
         
-        entry.drug_tests_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.total_drug_tests / entry.hot_leads_assigned) : 0;
-        entry.onboarded_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.onboarded / entry.hot_leads_assigned) : 0;
+       
 
         const totalLeads = entry.new_leads_assigned_on_date + entry.old_leads_assigned_on_date;
         if (totalLeads > 0) {
@@ -1875,8 +1872,7 @@ if (mode !== 'profiler') {
     const allPsp = rankedData.map(d => d.psp).sort((a, b) => a - b);
     const allCdl = rankedData.map(d => d.cdl).sort((a, b) => a - b);
     const allPastDueRatios = rankedData.map(d => d.past_due_ratio).sort((a, b) => a - b);
-    const allDrugTestsPerHotLead = rankedData.map(d => d.drug_tests_per_hot_lead).sort((a, b) => a - b);
-    const allOnboardedPerHotLead = rankedData.map(d => d.onboarded_per_hot_lead).sort((a, b) => a - b);
+   
     const allProfilerNoteLenghts = rankedData.map(d => d.profiler_note_lenght_all).sort((a, b) => a - b);
     const allMedianTimeToProfile = rankedData.map(d => d.median_time_to_profile).filter(v => v !== null).sort((a, b) => a - b);
     const allMedianCallDurations = rankedData.map(d => d.median_call_duration).filter(v => v !== null).sort((a, b) => a - b);
@@ -1899,8 +1895,7 @@ if (mode !== 'profiler') {
         entry.psp_percentile = getPercentile(entry.psp, allPsp);
         entry.cdl_percentile = getPercentile(entry.cdl, allCdl);
         entry.past_due_ratio_percentile = getPercentile(entry.past_due_ratio, allPastDueRatios, true);
-        entry.drug_tests_per_hot_lead_percentile = getPercentile(entry.drug_tests_per_hot_lead, allDrugTestsPerHotLead);
-        entry.onboarded_per_hot_lead_percentile = getPercentile(entry.onboarded_per_hot_lead, allOnboardedPerHotLead);
+        
         entry.profiler_note_lenght_percentile = getPercentile(entry.profiler_note_lenght_all, allProfilerNoteLenghts);
         entry.median_time_to_profile_percentile = getPercentile(entry.median_time_to_profile, allMedianTimeToProfile, true);
         entry.median_call_duration_percentile = getPercentile(entry.median_call_duration, allMedianCallDurations); 
@@ -1952,10 +1947,8 @@ if (mode !== 'profiler') {
                                         entry.profiles_score = 0;
                                     }
 
-        entry.arrivals_score = (entry.total_drug_tests_percentile * (arrivalsWeights.total_drug_tests_percentile || 0) +
-                                entry.onboarded_percentile * (arrivalsWeights.onboarded_percentile || 0) +
-                                entry.drug_tests_per_hot_lead_percentile * (arrivalsWeights.drug_tests_per_hot_lead_percentile || 0) +
-                                entry.onboarded_per_hot_lead_percentile * (arrivalsWeights.onboarded_per_hot_lead_percentile || 0)) / 100;
+                                    entry.arrivals_score = (entry.total_drug_tests_percentile * (arrivalsWeights.total_drug_tests_percentile || 0) +
+                                    entry.onboarded_percentile * (arrivalsWeights.onboarded_percentile || 0)) / 100;
 
         entry.final_score = (entry.effort_score * (finalWeights.effort_score || 0) +
                              entry.compliance_score * (finalWeights.compliance_score || 0) +
@@ -2190,8 +2183,7 @@ function renderRankingsHeaders() {
                 subGroups: [
                     { label: 'DRUG TESTS', columns: ['total_drug_tests'] },
                     { label: 'ONBOARDED', columns: ['onboarded'] },
-                    { label: 'DT / HOT', columns: ['drug_tests_per_hot_lead'], hidden: mode === 'profiler' },
-                    { label: 'ONB / HOT', columns: ['onboarded_per_hot_lead'], hidden: mode === 'profiler' }
+                    
                 ]
             }
         ],
@@ -2213,8 +2205,7 @@ function renderRankingsHeaders() {
             past_due_ratio: { label: 'Past Due %', type: 'number' },
             total_drug_tests: { label: 'Drug Tests', type: 'number' },
             onboarded: { label: 'Onboarded', type: 'number' },
-            drug_tests_per_hot_lead: { label: 'DT/Hot', type: 'number' },
-            onboarded_per_hot_lead: { label: 'Onb/Hot', type: 'number' },
+            
             profiles_score: { label: 'Profiles Score', type: 'number' },
             profiles_profiled: { label: 'Profiled', type: 'number' },
             profiles_completed: { label: 'Completed', type: 'number' },
@@ -2384,8 +2375,7 @@ function renderRankingsTable(data) {
         'arrivals_score',
         'total_drug_tests', 'total_drug_tests_percentile',
         'onboarded', 'onboarded_percentile',
-        ...(mode !== 'profiler' ? ['drug_tests_per_hot_lead', 'drug_tests_per_hot_lead_percentile'] : []),
-        ...(mode !== 'profiler' ? ['onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile'] : [])
+        
     ];
 
     if (!data || data.length === 0) {
@@ -2496,8 +2486,6 @@ function renderRankingsFooter(data) {
         'arrivals_score',
         'total_drug_tests', 'total_drug_tests_percentile',
         'onboarded', 'onboarded_percentile',
-        ...(mode !== 'profiler' ? ['drug_tests_per_hot_lead', 'drug_tests_per_hot_lead_percentile'] : []),
-        ...(mode !== 'profiler' ? ['onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile'] : [])
     ];
 
     const settings = mode === 'profiler' ? state.rankingSettingsProfiler : state.rankingSettings;
@@ -3763,7 +3751,7 @@ function openRankingsImageModal() {
         "Scores": ['effort_score', 'compliance_score', 'arrivals_score', 'calls_score', 'sms_score', 'profiles_score', 'documents_score'],
         "Effort Metrics": ['outbound_calls', 'outbound_calls_percentile', 'unique_calls', 'unique_calls_percentile', 'call_duration_seconds', 'call_duration_seconds_percentile', 'median_call_duration', 'median_call_duration_percentile', 'outbound_sms', 'outbound_sms_percentile', 'unique_sms', 'unique_sms_percentile', 'active_days', 'active_days_percentile', 'profiler_note_lenght_all', 'profiler_note_lenght_percentile', 'median_time_to_profile', 'median_time_to_profile_percentile'],
         "Compliance Metrics": ['tte_value', 'tte_percentile', 'leads_reached', 'leads_reached_percentile', 'profiles_profiled', 'profiles_profiled_percentile', 'profiles_completed', 'profiles_completed_percentile', 'mvr', 'mvr_percentile', 'psp', 'psp_percentile', 'cdl', 'cdl_percentile', 'past_due_ratio', 'past_due_ratio_percentile'],
-        "Arrivals Metrics": ['total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile', 'drug_tests_per_hot_lead', 'drug_tests_per_hot_lead_percentile', 'onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile']
+        "Arrivals Metrics": ['total_drug_tests', 'total_drug_tests_percentile', 'onboarded', 'onboarded_percentile']
     };
 
     const displayOptionsHtml = `
@@ -4017,10 +4005,7 @@ function renderRankingsImagePreview() {
     columnLabels['proj_hot_diff'] = 'Proj. Hot Diff';
     columnLabels['proj_recycled_diff'] = 'Proj. Recycled Diff';
 
-    columnLabels['drug_tests_per_hot_lead'] = 'DT / Hot Lead';
-    columnLabels['drug_tests_per_hot_lead_percentile'] = 'DT / Hot Lead %';
-    columnLabels['onboarded_per_hot_lead'] = 'Onboarded / Hot Lead';
-    columnLabels['onboarded_per_hot_lead_percentile'] = 'Onboarded / Hot Lead %';
+    
 
     const getLabel = (key) => (columnLabels[key] || key).toUpperCase();
 
