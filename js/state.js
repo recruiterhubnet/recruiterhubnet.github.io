@@ -6,7 +6,12 @@ export const defaultRankingWeights = {
     compliance_score: { tte_percentile: 25, leads_reached_percentile: 15, past_due_ratio_percentile: 10, documents_score: 10, profiles_completed_percentile: 20, tenure_percentile: 20 },
     calls_score: { outbound_calls_percentile: 30, unique_calls_percentile: 20, call_duration_seconds_percentile: 25, median_call_duration_percentile: 25 },
     sms_score: { outbound_sms_percentile: 50, unique_sms_percentile: 50 },
-    arrivals_score: { total_drug_tests_percentile: 30, onboarded_percentile: 70 },
+    arrivals_score: { 
+        total_drug_tests_percentile: 15, 
+        onboarded_percentile: 50,
+        drug_tests_per_hot_lead_percentile: 10,
+        onboarded_per_hot_lead_percentile: 25
+    },
     documents_score: { mvr_percentile: 34, psp_percentile: 33, cdl_percentile: 33 }
 };
 
@@ -14,7 +19,11 @@ export const defaultRankingWeightsProfiler = {
     final_score: { effort_score: 40, compliance_score: 40, arrivals_score: 20 },
     effort_score: { calls_score: 35, sms_score: 30, profiler_note_lenght_percentile: 10, active_days_percentile: 10, median_time_to_profile_percentile: 15 },
     compliance_score: { tte_percentile: 25, leads_reached_percentile: 25, profiles_score: 50, documents_score: 0 },
-    profiles_score: { profiles_profiled_percentile: 80, profiles_completed_percentile: 20 },
+    profiles_score: { 
+        profiles_profiled_percentile: 70, 
+        profiles_completed_percentile: 15,
+        profiled_per_hot_lead_percentile: 15 
+    },
     calls_score: { outbound_calls_percentile: 35, unique_calls_percentile: 15, call_duration_seconds_percentile: 20, median_call_duration_percentile: 30 },
     sms_score: { outbound_sms_percentile: 50, unique_sms_percentile: 50 },
     arrivals_score: { total_drug_tests_percentile: 100, onboarded_percentile: 0 },
