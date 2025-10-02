@@ -3,7 +3,11 @@
 import { leadRiskAppScriptUrl, workingHoursAppScriptUrl, arrivalsAppScriptUrl, drugTestsAppScriptUrl, mvrPspCdlAppScriptUrl, leadLifecycleAppScriptUrl, updatesAppScriptUrl, globalSettingsAppScriptUrl } from './config.js';
 
 
-async function fetchData(url) {
+async function fetchData(url, name) { // MODIFIED: Added 'name' parameter
+    const startTime = performance.now();
+    // MODIFIED: Use the provided name instead of parsing the URL
+    console.log(`[FETCH START] 🚀 Starting fetch for: ${name}`);
+
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -13,9 +17,17 @@ async function fetchData(url) {
         if (data.status === 'error') {
             throw new Error(`API Error: ${data.message}`);
         }
+        
+        const endTime = performance.now();
+        const duration = (endTime - startTime).toFixed(2);
+        console.log(`[FETCH SUCCESS] ✅ Finished fetch for: ${name} in ${duration} ms.`);
+
         return data;
     } catch (error) {
-        console.error('Error fetching data from ' + url, error);
+        const endTime = performance.now();
+        const duration = (endTime - startTime).toFixed(2);
+        console.error(`[FETCH ERROR] ❌ Failed fetch for: ${name} in ${duration} ms.`, error);
+
         // Silently fail for global settings to not block the app
         if (url !== globalSettingsAppScriptUrl) {
             alert(`A critical error occurred while trying to fetch data. Please check the console for details.`);
@@ -56,14 +68,15 @@ async function sendData(url, data) {
 }
 
 export async function fetchAllData() {
-    const leadRiskPromise = fetchData(leadRiskAppScriptUrl);
-    const workingHoursPromise = fetchData(workingHoursAppScriptUrl);
-    const arrivalsPromise = fetchData(arrivalsAppScriptUrl);
-    const drugTestsPromise = fetchData(drugTestsAppScriptUrl);
-    const mvrPspCdlPromise = fetchData(mvrPspCdlAppScriptUrl);
-    const leadLifecyclePromise = fetchData(leadLifecycleAppScriptUrl);
-    const updatesPromise = fetchData(updatesAppScriptUrl);
-    const globalSettingsPromise = fetchData(globalSettingsAppScriptUrl);
+    // MODIFIED: Pass a descriptive name for each fetch call
+    const leadRiskPromise = fetchData(leadRiskAppScriptUrl, 'Lead Risk');
+    const workingHoursPromise = fetchData(workingHoursAppScriptUrl, 'Working Hours');
+    const arrivalsPromise = fetchData(arrivalsAppScriptUrl, 'Arrivals');
+    const drugTestsPromise = fetchData(drugTestsAppScriptUrl, 'Drug Tests');
+    const mvrPspCdlPromise = fetchData(mvrPspCdlAppScriptUrl, 'Documents & Capture');
+    const leadLifecyclePromise = fetchData(leadLifecycleAppScriptUrl, 'Lead Lifecycle');
+    const updatesPromise = fetchData(updatesAppScriptUrl, 'App Updates');
+    const globalSettingsPromise = fetchData(globalSettingsAppScriptUrl, 'Global Settings');
 
     const [leadRiskData, whData, arrivalsResponse, drugTestsResponse, fullCaptureResponse, leadLifecycleResponse, updatesData, globalSettingsData] = await Promise.all([
         leadRiskPromise,
@@ -120,5 +133,6 @@ export async function exportGlobalSettings(settings, pin) {
 }
 
 export async function fetchGlobalSettings() {
-    return fetchData(globalSettingsAppScriptUrl);
+    // MODIFIED: Pass a descriptive name here as well
+    return fetchData(globalSettingsAppScriptUrl, 'Global Settings (Manual Load)');
 }
