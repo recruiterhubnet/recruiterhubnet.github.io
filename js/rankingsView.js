@@ -3852,8 +3852,6 @@ function renderRankingsImagePreview() {
     const previewContainer = document.getElementById('rankingsImagePreviewContainer');
     if (!previewContainer) return;
 
-    // The complex focus-saving logic has been fully removed.
-
     const companyStats = JSON.parse(document.getElementById('rankingsImageSettings').dataset.companyStats || '{}');
     const allCompanies = [...new Set(state.allData.map(d => d.company_name).filter(c => c && c !== 'ALL'))].sort();
 
@@ -3901,34 +3899,40 @@ function renderRankingsImagePreview() {
         const contractNames = itemIsGroup 
             ? matchedItem.contractIds.map(id => savedDelegationSettings.contracts.find(c => c.id === id)?.name).filter(Boolean)
             : [matchedItem.name];
-
+        
+        // --- START: THIS IS THE DEFINITIVE FIX ---
+        // Get all filters from the main Rankings view to ensure calculations are consistent.
         const fromDateStr = document.getElementById('rankingsDateFromFilter').value;
         const toDateStr = document.getElementById('rankingsDateToFilter').value;
         const fromDate = fromDateStr ? new Date(fromDateStr) : null;
         const toDate = toDateStr ? new Date(new Date(toDateStr).getTime() + (24 * 60 * 60 * 1000 - 1)) : null;
+        const selectedTeams = getSelectedValues(document.getElementById('rankingsTeamFilterDropdown'));
 
-        const matchesDateAndMode = (row) => {
+        // This filter function now correctly applies ALL main page filters (Dates, Teams, Entity Type)
+        const entityTypeFilter = (row) => state.rankingsMode === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
+        
+        const matchesDateAndTeamAndMode = (row) => {
             const rowDate = row.date ? new Date(row.date) : null;
-            if (!rowDate || !fromDate || !toDate || rowDate < fromDate || rowDate > toDate) return false;
-            const teamName = row.team_name || row.team;
-            if (state.rankingsMode === 'profiler') return teamName === 'Profilers';
-            return teamName !== 'Profilers';
+            const dateMatch = rowDate && rowDate >= fromDate && rowDate <= toDate;
+            const teamMatch = selectedTeams.length === 0 || selectedTeams.includes(row.team_name);
+            return dateMatch && entityTypeFilter(row) && teamMatch;
         };
-
+        // --- END: THIS IS THE DEFINITIVE FIX ---
+        
         const standardFilter = (row) => {
-            if (!matchesDateAndMode(row)) return false;
+            if (!matchesDateAndTeamAndMode(row)) return false;
             return row.company_name === 'ALL' && contractNames.includes(row.contract_type);
         };
         
         const arrivalsFilter = (row) => {
-            if (!matchesDateAndMode(row)) return false;
+            if (!matchesDateAndTeamAndMode(row)) return false;
             return contractNames.includes(row.contract_type);
         };
 
         const filteredLeadRiskData = state.allData.filter(standardFilter);
         const filteredMvrPspCdlData = state.mvrPspCdlData.filter(standardFilter);
-        const filteredPastDueData = state.recruiterData.filter(matchesDateAndMode);
-        const filteredProfilerData = state.profilerData.filter(matchesDateAndMode);
+        const filteredPastDueData = state.recruiterData.filter(matchesDateAndTeamAndMode);
+        const filteredProfilerData = state.profilerData.filter(matchesDateAndTeamAndMode);
         const filteredArrivalsData = state.arrivalsData.filter(arrivalsFilter);
         const filteredDrugTestsData = state.drugTestsData.filter(arrivalsFilter);
 
@@ -3951,14 +3955,15 @@ function renderRankingsImagePreview() {
             const activationTeams = allTeams.map(t => ({ id: sanitizeForId(t), name: t }));
             const activationProfilers = allProfilers.map(p => ({ id: sanitizeForId(p), name: p }));
 
-            const entityList = state.rankingsMode === 'team' ? activationTeams : activationProfilers;
+            const entityList = state.rankingsMode === 'team' ? activationTeams : (state.rankingsMode === 'profiler' ? activationProfilers : [...activationTeams, ...activationProfilers]);
+
 
             const activeEntityNames = new Set();
             allCompanies.forEach(company => {
                 const companyMatrix = savedActivationMatrix[company] || {};
                 entityList.forEach(entity => {
                     const matrixKey = `${entity.id}_${matchedItem.id}`;
-                    if (companyMatrix[matrixKey] === true) { // Use strict check
+                    if (companyMatrix[matrixKey] === true) {
                         activeEntityNames.add(entity.name);
                     }
                 });
@@ -3989,8 +3994,6 @@ function renderRankingsImagePreview() {
                     const entityObj = entityList.find(p => p.name === entityRow.name);
                     
                     if (entityObj && companyMatrix[`${entityObj.id}_${matchedItem.id}`] === true) {
-                        // --- THIS IS THE FIX ---
-                        // The list of entities for the denominator is now correctly filtered.
                         const activeEntitiesInMatrix = entityList.filter(ent => companyMatrix[`${ent.id}_${matchedItem.id}`] === true);
                         const totalScore = activeEntitiesInMatrix.reduce((sum, ent) => sum + (contractRankMap.get(ent.name) || 0), 0);
                         const entityScore = contractRankMap.get(entityRow.name) || 0;
@@ -4086,7 +4089,7 @@ function renderRankingsImagePreview() {
                 if (key.startsWith('delegation_') && key !== 'delegation_percent') {
                     value = `${value.toFixed(0)}%`;
                 } 
-                else if (key.includes('percentile') || key.includes('_score') || key === 'leads_reached' || key === 'past_due_ratio') {
+                else if (key.includes('percentile') || key.includes('_score') || key === 'leads_reached' || key === 'past_due_ratio' || key === 'delegation_percent') {
                     value = `${value.toFixed(1)}%`;
                 } else if (['tte_value', 'median_time_to_profile', 'median_call_duration', 'call_duration_seconds'].includes(key)) {
                     value = formatDuration(value);
@@ -4117,8 +4120,6 @@ function renderRankingsImagePreview() {
         </div>
         <table>${headerHtml}${bodyHtml}</table>
     `;
-
-    // The old focus restoration code block that caused the error has been removed.
 }
 
 // Add this function at the end of the file
