@@ -114,6 +114,11 @@ function getYesterdayDateString() {
 
 
 function initializeApp() {
+    // --- START: MODIFICATION ---
+    console.log("[APP INIT] 🚀 Application initialization started.");
+    const totalLoadStartTime = performance.now();
+    // --- END: MODIFICATION ---
+
     const loadingScreen = document.getElementById('loadingScreen');
     loadingScreen.classList.remove('hidden');
     loadingScreen.classList.remove('opacity-0');
@@ -123,6 +128,11 @@ function initializeApp() {
             console.error("Failed to fetch critical data. Application cannot start.");
             return;
         }
+
+        // --- START: MODIFICATION ---
+        const dataProcessingStartTime = performance.now();
+        console.log("[APP INIT] ⚙️ All data fetched. Starting data processing and rendering...");
+        // --- END: MODIFICATION ---
 
         state.allData = data.leadRiskData ? data.leadRiskData.map(row => ({
             ...row, date: new Date(row.date),
@@ -135,7 +145,7 @@ function initializeApp() {
             new_leads_assigned_on_date: Number(row.new_leads_assigned_on_date || 0),
             old_leads_assigned_on_date: Number(row.old_leads_assigned_on_date || 0),
             hot_leads_assigned: (Number(row.new_hot_leads_assigned_on_date) || 0) + (Number(row.old_hot_leads_assigned_on_date) || 0),
-            fresh_leads_assigned_on_date: Number(row.fresh_leads_assigned_on_date || 0), 
+            fresh_leads_assigned_on_date: Number(row.fresh_leads_assigned_on_date || 0),
             recycled_leads: Number(row.recycled_leads || 0),
             profiles_profiled: Number(row.total_profiled_leads_on_date || 0),
             profiles_completed: Number(row.closed_on_date || 0),
@@ -152,7 +162,7 @@ function initializeApp() {
                 total_arrivals: 1,
                 tenure: row.tenure ? Number(row.tenure) : null
             };
-        
+
             // If a recruiter is listed, create an entry for them.
             if (row.recruiter_name) {
                 results.push({
@@ -162,7 +172,7 @@ function initializeApp() {
                     team_name: row.team_name
                 });
             }
-        
+
             // If a profiler is listed, create a separate entry for them.
             if (row.profiler) {
                 results.push({
@@ -172,7 +182,7 @@ function initializeApp() {
                     team_name: 'Profilers'
                 });
             }
-        
+
             return results;
         }) : [];
         state.drugTestsData = data.drugTestsData ? data.drugTestsData.map(row => ({
@@ -183,8 +193,8 @@ function initializeApp() {
         state.recruiterData = data.recruiterData ? data.recruiterData.map(row => {
             const newRow = {
                 date: new Date(row.date),
-                recruiter_name: row.recruiter, 
-                team_name: row.team,           
+                recruiter_name: row.recruiter,
+                team_name: row.team,
             };
             for (const key in row) {
                 if (key !== 'date' && key !== 'recruiter' && key !== 'team') {
@@ -193,11 +203,11 @@ function initializeApp() {
             }
             return newRow;
         }) : [];
-        
+
         state.profilerData = data.profilerData ? data.profilerData.map(row => {
             const newRow = {
                 date: new Date(row.date),
-                recruiter_name: row.profiler, 
+                recruiter_name: row.profiler,
                 team_name: row.team,
             };
             for (const key in row) {
@@ -327,12 +337,24 @@ function initializeApp() {
         addModalEventListeners();
         applyAllFiltersAndRender();
 
+        // --- START: MODIFICATION ---
+        const dataProcessingEndTime = performance.now();
+        const processingDuration = (dataProcessingEndTime - dataProcessingStartTime).toFixed(2);
+        console.log(`[APP INIT] ✅ Data processing and initial render finished in ${processingDuration} ms.`);
+        // --- END: MODIFICATION ---
+
     }).catch(error => {
         console.error('Initialization failed:', error);
     }).finally(() => {
         const loadingScreen = document.getElementById('loadingScreen');
         loadingScreen.classList.add('opacity-0');
         setTimeout(() => loadingScreen.classList.add('hidden'), 500);
+
+        // --- START: MODIFICATION ---
+        const totalLoadEndTime = performance.now();
+        const totalDuration = (totalLoadEndTime - totalLoadStartTime).toFixed(2);
+        console.log(`[APP INIT] 🎉 Total application load time: ${totalDuration} ms.`);
+        // --- END: MODIFICATION ---
     });
 }
 
