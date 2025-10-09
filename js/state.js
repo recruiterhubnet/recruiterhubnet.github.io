@@ -80,6 +80,9 @@ export const state = {
     breakdownDataSource: 'all',
     // Working hours
     whLastSelectedDay: null,
+    whChartView: 'heatmap', // 'heatmap' or 'chart'
+    dailyActivityChartInstance: null,
+    whComparisonMetric: 'none', // 'none', 'profiled', 'completed', 'arrivals', 'drug_tests'
     // Lead Assignment Count
     laLifecycleSettings: {
         visibleStatuses: [],
