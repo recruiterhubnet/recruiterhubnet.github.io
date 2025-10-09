@@ -1848,16 +1848,16 @@ if (mode !== 'profiler') {
                 entry.median_call_duration = null;
             }
            
-        entry.drug_tests_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.total_drug_tests / entry.hot_leads_assigned) : 0;
-        entry.onboarded_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.onboarded / entry.hot_leads_assigned) : 0;
-        if (mode === 'profiler') {
+            entry.drug_tests_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.total_drug_tests / entry.hot_leads_assigned) : entry.total_drug_tests;
+            entry.onboarded_per_hot_lead = entry.hot_leads_assigned > 0 ? (entry.onboarded / entry.hot_leads_assigned) : entry.onboarded;
+            if (mode === 'profiler') {
+                const totalLeads = entry.new_leads_assigned_on_date + entry.old_leads_assigned_on_date;
+                entry.profiled_per_hot_lead = totalLeads > 0 ? (entry.profiles_profiled / totalLeads) : 0;
+            }
+    
+    
             const totalLeads = entry.new_leads_assigned_on_date + entry.old_leads_assigned_on_date;
-            entry.profiled_per_hot_lead = totalLeads > 0 ? (entry.profiles_profiled / totalLeads) : 0;
-        }
-
-
-        const totalLeads = entry.new_leads_assigned_on_date + entry.old_leads_assigned_on_date;
-        if (totalLeads > 0) {
+            if (totalLeads > 0) {
             const perLeadSettings = settings.perLeadMetrics;
             if (perLeadSettings.outbound_calls) entry.outbound_calls /= totalLeads;
             if (perLeadSettings.unique_calls) entry.unique_calls /= totalLeads;
