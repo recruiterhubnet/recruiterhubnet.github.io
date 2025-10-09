@@ -1,3 +1,6 @@
+//
+// ✅ PASTE THIS REPLACEMENT (ENTIRE FILE)
+//
 // js/workingHoursView.js
 import { state } from './state.js';
 import { whChartConfigs } from './config.js';
@@ -13,15 +16,176 @@ export function initializeWorkingHours() {
         getSmsStatusData, getSmsTypeData
     };
     populateInsightChartSelect();
+
+    const comparisonContainer = document.getElementById('whComparisonContainer');
+    const comparisonBtn = document.getElementById('whComparisonBtn');
+    const comparisonDropdown = document.getElementById('whComparisonDropdown');
+
+    document.getElementById('whViewHeatmapBtn').addEventListener('click', () => {
+        if (state.whChartView === 'heatmap') return;
+        state.whChartView = 'heatmap';
+        document.getElementById('whViewHeatmapBtn').classList.add('active');
+        document.getElementById('whViewChartBtn').classList.remove('active');
+        comparisonContainer.classList.add('hidden');
+        rerenderWorkingHoursView();
+    });
+
+    document.getElementById('whViewChartBtn').addEventListener('click', () => {
+        if (state.whChartView === 'chart') return;
+        state.whChartView = 'chart';
+        document.getElementById('whViewChartBtn').classList.add('active');
+        document.getElementById('whViewHeatmapBtn').classList.remove('active');
+        comparisonContainer.classList.remove('hidden');
+        rerenderWorkingHoursView();
+    });
+
+    comparisonBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        comparisonDropdown.classList.toggle('hidden');
+    });
+
+    comparisonDropdown.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            state.whComparisonMetric = e.target.dataset.value;
+            comparisonBtn.querySelector('span').textContent = e.target.textContent;
+            rerenderWorkingHoursView();
+        }
+        comparisonDropdown.classList.add('hidden');
+    });
+
+    document.addEventListener('click', () => {
+        if (!comparisonDropdown.classList.contains('hidden')) {
+            comparisonDropdown.classList.add('hidden');
+        }
+    });
 }
 
 export function rerenderWorkingHoursView() {
     const filteredData = getFilteredWHData();
+    const chartWrapper = document.getElementById('whChartWrapper');
+
     renderHeatmap(filteredData);
+
+    if (state.whChartView === 'heatmap') {
+        chartWrapper.classList.add('hidden');
+    } else {
+        chartWrapper.classList.remove('hidden');
+        const comparisonData = getDailyComparisonData();
+        renderDailyActivityChart(filteredData, comparisonData.data, comparisonData.label);
+    }
+
     renderHourlyActivityChart(filteredData);
     renderFutureChart(state.currentFutureChartIndex, filteredData);
     displayInitialTopPerformers(filteredData);
 }
+
+function getDailyComparisonData() {
+    const metric = state.whComparisonMetric;
+    let label = '';
+    const dailyMap = new Map();
+
+    if (metric === 'none') {
+        return { data: dailyMap, label: '' };
+    }
+
+    const filters = {
+        recruiter: document.getElementById('whRecruiterFilter').value,
+        team: document.getElementById('whTeamFilter').value,
+        company: document.getElementById('whCompanyFilter').value,
+        dateFrom: document.getElementById('whDateFromFilter').value,
+        dateTo: document.getElementById('whDateToFilter').value,
+    };
+    
+    // FIX: This robust date filter prevents the "Invalid time value" error.
+    const dateFilter = (dateValue) => {
+        if (!dateValue || !(dateValue instanceof Date) || isNaN(dateValue.getTime())) return false; 
+        const rowDateStr = dateValue.toISOString().split('T')[0];
+        return rowDateStr >= filters.dateFrom && rowDateStr <= filters.dateTo;
+    };
+
+    const companyToFilter = filters.company === '' ? 'ALL' : filters.company;
+    let relevantData;
+
+    switch (metric) {
+        case 'profiled':
+            label = 'Profiled Leads';
+            // FIX: Reverted to the original logic for Profiled Leads.
+            relevantData = state.allData.filter(row =>
+                row.level === 'RECRUITER' &&
+                row.contract_type === 'ALL' &&
+                row.company_name === companyToFilter &&
+                (!filters.recruiter || row.recruiter_name === filters.recruiter) &&
+                (!filters.team || row.team_name === filters.team) &&
+                dateFilter(row.date)
+            );
+            relevantData.forEach(row => {
+                const dateKey = new Date(row.date).toISOString().split('T')[0];
+                const currentCount = dailyMap.get(dateKey) || 0;
+                dailyMap.set(dateKey, currentCount + (row.profiles_profiled || 0));
+            });
+            break;
+
+        case 'completed':
+            label = 'Completed Leads';
+            // FIX: This now uses the new logic to ignore Profilers when "All Recruiters" is selected.
+            relevantData = state.allData.filter(row => {
+                const isGeneralFilter = !filters.recruiter && filters.team !== 'Profilers';
+                if (isGeneralFilter && row.team_name === 'Profilers') {
+                    return false;
+                }
+                
+                return row.level === 'RECRUITER' &&
+                    row.contract_type === 'ALL' &&
+                    row.company_name === companyToFilter &&
+                    (!filters.recruiter || row.recruiter_name === filters.recruiter) &&
+                    (!filters.team || row.team_name === filters.team) &&
+                    dateFilter(row.date);
+            });
+            relevantData.forEach(row => {
+                const dateKey = new Date(row.date).toISOString().split('T')[0];
+                const currentCount = dailyMap.get(dateKey) || 0;
+                dailyMap.set(dateKey, currentCount + (row.profiles_completed || 0));
+            });
+            break;
+
+        case 'arrivals':
+            label = 'Arrivals';
+            relevantData = state.arrivalsData.filter(row =>
+                dateFilter(row.date) &&
+                (!filters.team || row.team_name === filters.team) &&
+                (!filters.recruiter || row.recruiter_name === filters.recruiter)
+            );
+            relevantData.forEach(row => {
+                const dateKey = new Date(row.date).toISOString().split('T')[0];
+                const currentCount = dailyMap.get(dateKey) || 0;
+                dailyMap.set(dateKey, currentCount + 1);
+            });
+            break;
+
+        case 'drug_tests':
+            label = 'Drug Tests';
+            relevantData = state.drugTestsData.filter(row =>
+                dateFilter(row.date) &&
+                (!filters.recruiter || row.recruiter_name === filters.recruiter) &&
+                (!filters.team || row.team_name === filters.team) &&
+                (!filters.company || row.company_name === filters.company)
+            );
+
+            if (!filters.recruiter && filters.team !== 'Profilers') {
+                relevantData = relevantData.filter(row => row.team_name !== 'Profilers');
+            }
+
+            relevantData.forEach(row => {
+                const dateKey = new Date(row.date).toISOString().split('T')[0];
+                const currentCount = dailyMap.get(dateKey) || 0;
+                dailyMap.set(dateKey, currentCount + 1);
+            });
+            break;
+    }
+
+    return { data: dailyMap, label };
+}
+
 
 function getFilteredWHData() {
     const filters = {
@@ -40,13 +204,13 @@ function getFilteredWHData() {
 
     return state.workingHoursData.filter(d => {
         const timestampDate = new Date(d.timestamp);
-        const dateMatch = 
+        const dateMatch =
             (!filters.dateFrom || d.timestamp.substring(0, 10) >= filters.dateFrom) &&
             (!filters.dateTo || d.timestamp.substring(0, 10) <= filters.dateTo);
 
         const dayMatch = !filters.dayOfWeek || timestampDate.getUTCDay() == filters.dayOfWeek;
 
-        const baseMatch = 
+        const baseMatch =
             (!filters.recruiter || d.recruiter_name === filters.recruiter) &&
             (!filters.team || d.team_name === filters.team) &&
             (!filters.company || d.company_name === filters.company) &&
@@ -67,18 +231,124 @@ function getFilteredWHData() {
         if (callFiltersActive && !smsFiltersActive) return callMatch || d.event_type === 'sms';
         if (!callFiltersActive && smsFiltersActive) return smsMatch || d.event_type === 'call';
         if (callFiltersActive && smsFiltersActive) return callMatch || smsMatch;
-        
+
         return true;
     });
 }
 
-// --- HEATMAP AND TOP PERFORMERS ---
+function renderDailyActivityChart(filteredData, comparisonData, comparisonLabel) {
+    const ctx = document.getElementById('dailyActivityChart').getContext('2d');
+    if (state.dailyActivityChartInstance) {
+        state.dailyActivityChartInstance.destroy();
+    }
+
+    const dailyData = new Map();
+    filteredData.forEach(item => {
+        const dateKey = item.timestamp.substring(0, 10);
+        if (!dailyData.has(dateKey)) {
+            dailyData.set(dateKey, { all: 0, calls: 0, sms: 0 });
+        }
+        const day = dailyData.get(dateKey);
+        day.all++;
+        if (item.event_type === 'call') {
+            day.calls++;
+        } else if (item.event_type === 'sms') {
+            day.sms++;
+        }
+    });
+
+    const sortedDates = Array.from(dailyData.keys()).sort();
+    const dataTypeSelect = document.getElementById('heatmapDataTypeSelect');
+    const dataType = dataTypeSelect.value;
+    const mainLabel = dataTypeSelect.options[dataTypeSelect.selectedIndex].text; // Get the selected text
+
+    const datasets = [{
+        label: mainLabel, // Use the dynamic label
+        data: sortedDates.map(date => dailyData.get(date)[dataType]),
+        borderColor: '#3B82F6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: true,
+        tension: 0.3,
+        yAxisID: 'y'
+    }];
+
+    if (state.whComparisonMetric !== 'none') {
+        let borderColor = '#10B981'; // Green for Profiled/Drug Tests
+        if (comparisonLabel === 'Arrivals') borderColor = '#8B5CF6'; // Purple
+        if (comparisonLabel === 'Completed Leads') borderColor = '#F59E0B'; // Amber
+
+        datasets.push({
+            label: comparisonLabel,
+            data: sortedDates.map(date => comparisonData.get(date) || 0),
+            borderColor: borderColor,
+            backgroundColor: 'rgba(0,0,0,0.1)',
+            fill: true,
+            tension: 0.3,
+            yAxisID: 'y1'
+        });
+    }
+
+    const chartData = {
+        labels: sortedDates,
+        datasets: datasets
+    };
+
+    state.dailyActivityChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    display: state.whComparisonMetric !== 'none',
+                    position: 'bottom',
+                    labels: {
+                        color: '#9ca3af',
+                        usePointStyle: true,
+                        pointStyle: 'line'
+                    }
+                },
+                datalabels: { display: false }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { unit: 'day', tooltipFormat: 'MMM d, yyyy' },
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: '#374151' }
+                },
+                y: {
+                    beginAtZero: true,
+                    type: 'linear',
+                    position: 'left',
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: '#374151' },
+                    title: { display: true, text: 'Activity Count', color: '#9ca3af' }
+                },
+                y1: {
+                    beginAtZero: true,
+                    type: 'linear',
+                    position: 'right',
+                    display: state.whComparisonMetric !== 'none',
+                    ticks: { color: '#9ca3af' },
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: comparisonLabel, color: '#9ca3af' }
+                }
+            }
+        }
+    });
+}
+
+// (The rest of the functions in this file remain unchanged)
+
 function getHeatmapData(filteredData) {
     const heatmapData = {};
     filteredData.forEach(item => {
         const date = new Date(item.timestamp);
-        const day = date.getUTCDay(); // Use UTC day
-        const hour = date.getUTCHours(); // Use UTC hour
+        const day = date.getUTCDay();
+        const hour = date.getUTCHours();
         const key = `${day}-${hour}`;
         if (!heatmapData[key]) {
             heatmapData[key] = { total_calls: 0, total_sms: 0, total_duration: 0, recruiters: new Set(), total_activity: 0, day, hour };
@@ -107,11 +377,11 @@ function renderHeatmap(filteredWHData) {
         const shadeIndex = Math.min(redShades.length - 1, Math.floor(intensity * redShades.length));
         return redShades[shadeIndex];
     };
-    
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon-Sun
 
-    container.appendChild(document.createElement('div')); // Empty corner
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+
+    container.appendChild(document.createElement('div'));
     for (let i = 0; i < 24; i++) {
         const hourLabel = document.createElement('div');
         hourLabel.className = 'heatmap-label';
@@ -124,7 +394,7 @@ function renderHeatmap(filteredWHData) {
         dayLabel.className = 'heatmap-label font-semibold';
         dayLabel.textContent = days[dayIndex];
         container.appendChild(dayLabel);
-        
+
         for (let hour = 0; hour < 24; hour++) {
             const data = heatmapData[`${dayIndex}-${hour}`] || { total_calls: 0, total_sms: 0, total_duration: 0, recruiters: new Set(), total_activity: 0 };
             const cell = document.createElement('div');
@@ -147,7 +417,7 @@ function renderHeatmap(filteredWHData) {
 function displayInitialTopPerformers(filteredWHData) {
     const heatmapData = getHeatmapData(filteredWHData);
     if (Object.keys(heatmapData).length === 0) {
-        state.whLastSelectedDay = null; // Reset
+        state.whLastSelectedDay = null;
         updateTopPerformers(null, null, null);
         return;
     }
@@ -155,13 +425,11 @@ function displayInitialTopPerformers(filteredWHData) {
     const viewMode = document.getElementById('topPerformersViewSelect').value;
     let dayToSelect, hourToSelect, dayNameToSelect;
 
-    // Use the last selected day if it exists in the current filtered data
     const lastDayIsValid = state.whLastSelectedDay !== null && Object.values(heatmapData).some(d => d.day == state.whLastSelectedDay);
 
     if (lastDayIsValid) {
         dayToSelect = state.whLastSelectedDay;
     } else {
-        // Otherwise, find the most active day in the current view
         const dailyActivity = {};
         Object.values(heatmapData).forEach(slot => {
             dailyActivity[slot.day] = (dailyActivity[slot.day] || 0) + slot.total_activity;
@@ -173,8 +441,7 @@ function displayInitialTopPerformers(filteredWHData) {
             return;
         }
     }
-    
-    // Determine the hour to select based on the view mode
+
     if (viewMode === 'by_hour') {
         const mostActiveHourForDay = Object.values(heatmapData)
             .filter(d => d.day == dayToSelect)
@@ -183,9 +450,9 @@ function displayInitialTopPerformers(filteredWHData) {
     } else {
         hourToSelect = null;
     }
-    
+
     dayNameToSelect = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayToSelect];
-    
+
     updateTopPerformers(dayToSelect, hourToSelect, dayNameToSelect);
 }
 
@@ -194,7 +461,7 @@ export function updateTopPerformers(day, hour, dayName) {
     const topPerformersHeadline = document.getElementById('topPerformersHeadline');
     const viewMode = document.getElementById('topPerformersViewSelect').value;
 
-    selectHeatmapCells(day, hour); // Centralize cell selection
+    selectHeatmapCells(day, hour);
 
     if (day === null) {
         topPerformersHeadline.textContent = 'Top Performers';
@@ -202,13 +469,13 @@ export function updateTopPerformers(day, hour, dayName) {
         return;
     }
 
-    state.whLastSelectedDay = day; // Keep track of the last viewed day
+    state.whLastSelectedDay = day;
 
     const slotData = getFilteredWHData().filter(d => {
         const date = new Date(d.timestamp);
         if (viewMode === 'by_hour' && hour !== null) {
             return date.getUTCDay() == day && date.getUTCHours() == hour;
-        } else { // by_day
+        } else {
             return date.getUTCDay() == day;
         }
     });
@@ -271,7 +538,6 @@ export function updateTopPerformers(day, hour, dayName) {
 }
 
 // --- CHARTING FUNCTIONS ---
-
 function getCallStatusData(filteredData) {
     const statusCounts = {};
     filteredData.forEach(item => {
@@ -304,11 +570,10 @@ function getSmsTypeData(filteredData) {
     return { labels: Object.keys(typeCounts), data: Object.values(typeCounts) };
 }
 
-
 function getHourlyActivity(filteredData) {
     const hourlyActivity = Array(24).fill(0).map((_, hour) => ({ hour, activity: 0 }));
     filteredData.forEach(item => {
-        const hour = new Date(item.timestamp).getUTCHours(); // Use UTC hour
+        const hour = new Date(item.timestamp).getUTCHours();
         hourlyActivity[hour].activity++;
     });
     return hourlyActivity;
@@ -317,12 +582,11 @@ function getHourlyActivity(filteredData) {
 function getTop5Hours(d) { return getHourlyActivity(d).sort((a,b)=>b.activity-a.activity).slice(0,5).map(h=>({label: `${h.hour}:00`, value: h.activity})) }
 function getWorst5Hours(d) { return getHourlyActivity(d).filter(h=>h.activity>0).sort((a,b)=>a.activity-b.activity).slice(0,5).map(h=>({label: `${h.hour}:00`, value: h.activity})) }
 
-
 function getOutboundCallDurationByDay(filteredData) {
     const dailyDuration = Array(7).fill(0);
     filteredData.forEach(item => {
         if (item.event_type === 'call' && item.call_type === 'outbound' && item.duration) {
-            dailyDuration[new Date(item.timestamp).getUTCDay()] += item.duration; // Use UTC day
+            dailyDuration[new Date(item.timestamp).getUTCDay()] += item.duration;
         }
     });
     const orderedLabels = [ 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun' ];
@@ -335,7 +599,7 @@ function getMostActiveTeamByDay(filteredData) {
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     filteredData.forEach(item => {
         if ((item.event_type === 'call' && item.call_type === 'outbound') || item.event_type === 'sms') {
-            const day = new Date(item.timestamp).getUTCDay(); // Use UTC day
+            const day = new Date(item.timestamp).getUTCDay();
             const team = item.team_name || 'Unassigned';
             if (!dayMap.has(day)) dayMap.set(day, new Map());
             const teamStats = dayMap.get(day);
@@ -365,14 +629,14 @@ function getMostActiveRecruiterByDay(filteredData) {
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     filteredData.forEach(item => {
          if ((item.event_type === 'call' && item.call_type === 'outbound') || item.event_type === 'sms') {
-            const day = new Date(item.timestamp).getUTCDay(); // Use UTC day
+            const day = new Date(item.timestamp).getUTCDay();
             const recruiter = item.recruiter_name || 'Unassigned';
             if (!dayMap.has(day)) dayMap.set(day, new Map());
             const recruiterStats = dayMap.get(day);
             recruiterStats.set(recruiter, (recruiterStats.get(recruiter) || 0) + 1);
         }
     });
-    
+
     const resultLabels = [];
     const resultData = [];
     const orderedDays = [1, 2, 3, 4, 5, 6, 0];
@@ -393,10 +657,10 @@ function getMostActiveRecruiterByDay(filteredData) {
 function renderHourlyActivityChart() {
     const ctx = document.getElementById('hourlyActivityChart').getContext('2d');
     if (state.hourlyActivityChart) state.hourlyActivityChart.destroy();
-    
+
     const filteredData = getFilteredWHData();
     const hourlyData = getHourlyActivity(filteredData);
-    
+
     state.hourlyActivityChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -436,15 +700,15 @@ function populateInsightChartSelect() {
 function renderFutureChart(chartIndex, filteredData) {
     const ctx = document.getElementById('futureChart').getContext('2d');
     const headline = document.getElementById('activityInsightsHeadline');
-    
+
     const config = whChartConfigs[chartIndex];
     document.getElementById('insightChartSelect').value = chartIndex;
     headline.textContent = config.title;
-    
+
     if (state.futureChartInstance) state.futureChartInstance.destroy();
 
     const result = chartDataFunctions[config.dataFn](filteredData);
-    
+
     const labels = Array.isArray(result) ? result.map(d => d.label) : result.labels;
     const data = Array.isArray(result) ? result.map(d => d.value) : result.data;
 
@@ -467,7 +731,7 @@ function renderFutureChart(chartIndex, filteredData) {
             display: true,
             formatter: (value, context) => {
                 const fullLabel = context.chart.data.labels[context.dataIndex];
-                const match = fullLabel.match(/\(([^)]+)\)/); 
+                const match = fullLabel.match(/\(([^)]+)\)/);
                 return match ? match[1] : fullLabel;
             },
             rotation: -90,
