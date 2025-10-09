@@ -280,13 +280,43 @@
                          <div title="Select the end date"><label for="whDateToFilter" class="block text-xs font-medium text-gray-400 mb-1">To</label><input type="date" id="whDateToFilter" class="w-full control-deck-input text-sm"></div>
                      </div>
                  </div>
-                <div class="card bg-gray-900/50 p-6">
+                 <div class="card bg-gray-900/50 p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-white">Weekly Activity Heatmap</h3>
-                        <div class="relative" title="Select data type for heatmap"><select id="heatmapDataTypeSelect" class="control-deck-select text-sm"><option value="all">All Activity</option><option value="calls">Calls Only</option><option value="sms">SMS Only</option></select></div>
+                        <div class="flex items-center gap-4">
+                            <h3 class="text-lg font-semibold text-white">Weekly Activity</h3>
+                            <div class="flex items-center p-0.5 bg-gray-800 rounded-md">
+                                <button id="whViewHeatmapBtn" class="view-toggle-btn active px-3 py-1 text-sm font-semibold rounded-md">Heatmap</button>
+                                <button id="whViewChartBtn" class="view-toggle-btn px-3 py-1 text-sm font-semibold rounded-md">Line Chart</button>
+                            </div>
+                            <div id="whComparisonContainer" class="relative hidden">
+                                <button id="whComparisonBtn" class="view-toggle-btn px-3 py-1 text-sm font-semibold rounded-md flex items-center justify-between">
+                                    <span>No Comparison</span>
+                                    <i class="fas fa-chevron-down text-xs ml-2"></i>
+                                </button>
+                                <div id="whComparisonDropdown" class="hidden absolute z-30 mt-1 w-48 bg-gray-700 border border-gray-600 rounded-md shadow-lg">
+                                    <button class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600" data-value="none">No Comparison</button>
+                                    <button class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600" data-value="profiled">Compare with Profiled</button>
+                                    <button class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600" data-value="completed">Compare with Completed</button>
+                                    <button class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600" data-value="arrivals">Compare with Arrivals</button>
+                                    <button class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600" data-value="drug_tests">Compare with Drug Tests</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative" title="Select data type for heatmap/chart">
+                            <select id="heatmapDataTypeSelect" class="control-deck-select text-sm">
+                                <option value="all">All Activity</option>
+                                <option value="calls">Calls Only</option>
+                                <option value="sms">SMS Only</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <div id="heatmapContainer" class="heatmap-grid" title="Click a cell to see top performers for that hour"></div>
+                    <div class="relative">
+                        <div id="whHeatmapWrapper" class="overflow-x-auto">
+                            <div id="heatmapContainer" class="heatmap-grid" title="Click a cell to see top performers for that hour"></div>
+                        </div>
+                        <div id="whChartWrapper" class="hidden absolute inset-0 bg-gray-900 z-10">
+                            <canvas id="dailyActivityChart"></canvas>
+                        </div>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
