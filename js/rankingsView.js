@@ -1970,7 +1970,7 @@ if (mode !== 'profiler') {
                                     } else { // Recruiter or Team mode
                                         entry.compliance_score = (entry.tte_percentile * (complianceWeights.tte_percentile || 0) +
                                                                   entry.leads_reached_percentile * (complianceWeights.leads_reached_percentile || 0) +
-                                                                  entry.documents_score * (documentsWeights.documents_score || 0) +
+                                                                  entry.documents_score * (complianceWeights.documents_score || 0) +
                                                                   entry.past_due_ratio_percentile * (complianceWeights.past_due_ratio_percentile || 0) +
                                                                   entry.profiles_completed_percentile * (complianceWeights.profiles_completed_percentile || 0) +
                                                                   entry.tenure_percentile * (complianceWeights.tenure_percentile || 0)) / 100;
