@@ -116,10 +116,13 @@ function calculateDataForEntityType(entityType) {
 
     // --- RANK SCORE CALCULATION (Global) ---
     const entityTypeFilter = (row) => {
-        if (entityType === 'profiler') {
+        if (state.currentEntity === 'profiler') {
             return row.team_name === 'Profilers';
         }
-        return validTeams.includes(row.team_name);
+        // This is the fix:
+        // We must ensure the peer group ONLY includes non-profiler teams
+        // when in 'team' mode.
+        return row.team_name !== 'Profilers' && validTeams.includes(row.team_name);
     };
 
     const dateFilter = (row) => {
@@ -280,7 +283,7 @@ function updateLeadTypeSwitcherVisibility() {
 }
 
 function calculateAndCacheAllData() {
-    console.log("Recalculating base delegation data...");
+    
     state.cachedData.team = calculateDataForEntityType('team');
     state.cachedData.profiler = calculateDataForEntityType('profiler');
 }
@@ -689,6 +692,7 @@ function getEfficiencyClass(value) {
 function renderMasterView() {
 
     const delegationTable = document.getElementById('delegation-table');
+    const selectedTeamsFromRankings = getSelectedValues(document.getElementById('rankingsTeamFilterDropdown')); // <-- THIS IS THE NEWLY ADDED LINE
     const { entitiesData: calculatedData } = state.cachedData[state.currentEntity] || {};
     const currentCompanyView = state.currentView;
     if (!calculatedData || !Array.isArray(calculatedData)) {
@@ -714,17 +718,37 @@ if (fromDate && toDate) {
     visibleItems.forEach(item => {
         const contractNames = item.contractIds ? item.contractIds.map(id => state.settings.contracts.find(c => c.id === id)?.name) : [item.name];
 
-        const entityTypeFilter = (row) => state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
+// Filter is now based on the Delegation view's "Entity Type" toggle (state.currentEntity)
+const allTeamData = [...appState.allData, ...appState.drugTestsData, ...appState.mvrPspCdlData, ...appState.recruiterData, ...appState.profilerData];
+    const validTeams = [...new Set(allTeamData.map(d => d.team_name).filter(t => t && t !== 'Profilers'))];
 
-        const leadRiskDataForLevel = appState.allData.filter(row => {
-            const dateMatch = row.date && new Date(row.date) >= fromDate && new Date(row.date) <= toDate;
-            if (!dateMatch || !entityTypeFilter(row)) return false;
-            
-            if (state.currentEntity === 'team') {
-                return row.level === 'TEAM' || row.level === 'RECRUITER';
-            }
-            return row.level === 'RECRUITER';
-        });
+    // Filter is now based on the Delegation view's "Entity Type" toggle (state.currentEntity)
+    const entityTypeFilter = (row) => {
+        const delegationMode = state.currentEntity; // Use Delegation's toggle
+
+        // 1. Check if the entity type matches the Delegation UI mode
+        if (delegationMode === 'profiler') {
+            return row.team_name === 'Profilers';
+        }
+        if (delegationMode === 'team') {
+            // This correctly filters *out* Profilers when in Team mode
+            return row.team_name !== 'Profilers' && validTeams.includes(row.team_name);
+        }
+        return false; // Should not happen
+    };
+
+const leadRiskDataForLevel = appState.allData.filter(row => {
+    const dateMatch = row.date && new Date(row.date) >= fromDate && new Date(row.date) <= toDate;
+    if (!dateMatch || !entityTypeFilter(row)) return false; // entityTypeFilter now checks mode
+    
+    // --- THIS IS THE FIX ---
+    // Use Delegation's toggle (state.currentEntity) to determine which data level to use
+    if (state.currentEntity === 'team') { 
+        return row.level === 'TEAM' || row.level === 'RECRUITER';
+    }
+    // For 'profiler' mode
+    return row.level === 'RECRUITER';
+});
 
         const filteredLeadRiskData = leadRiskDataForLevel.filter(row => {
             const contractMatch = contractNames.includes(row.contract_type);
@@ -736,7 +760,7 @@ if (fromDate && toDate) {
             const rowDate = row.date ? new Date(row.date) : null;
             return rowDate && rowDate >= fromDate && rowDate <= toDate && entityTypeFilter(row);
         };
-        
+
         const arrivalsFilter = (row) => matchesDateAndTeam(row) && contractNames.includes(row.contract_type);
 
         const filteredMvrPspCdlData = appState.mvrPspCdlData.filter(row => matchesDateAndTeam(row) && contractNames.includes(row.contract_type) && row.company_name === 'ALL');
@@ -749,7 +773,10 @@ if (fromDate && toDate) {
             ...filteredLeadRiskData, ...filteredMvrPspCdlData, ...filteredPastDueData,
             ...filteredProfilerData, ...filteredArrivalsData, ...filteredDrugTestsData
         ];
+        // --- END: CORRECTED DATA AGGREGATION LOGIC ---
 
+        // --- THIS IS THE FIX ---
+        // Pass the rankingsMode to the calculation
         const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
         const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
         contractSpecificRanks.set(item.id, ranksMap);
@@ -948,7 +975,8 @@ if (fromDate && toDate) {
 
 function renderCompanyView() {
     const delegationTable = document.getElementById('delegation-table');
-    const { entitiesData: calculatedData, totalLeadsByContractGroupAcrossAllEntities7d, sevenDaysAgoCutoff } = state.cachedData[state.currentEntity] || {};
+    const selectedTeamsFromRankings = getSelectedValues(document.getElementById('rankingsTeamFilterDropdown')); // <-- THIS IS THE FIX
+    const { entitiesData: calculatedData, totalLeadsByContractGroupAcrossAllEntities7d, sevenDaysAgoCutoff } = state.cachedData[state.rankingsMode === 'profiler' ? 'profiler' : 'team'] || {}; // <-- THIS IS THE FIX
     const currentCompanyView = state.currentView;
 
     if (!calculatedData || !Array.isArray(calculatedData) || calculatedData.length === 0 || !totalLeadsByContractGroupAcrossAllEntities7d) {
@@ -989,15 +1017,33 @@ function renderCompanyView() {
     if (fromDate && toDate) {
 
         // --- CORRECTED DATA AGGREGATION LOGIC ---
-        const entityTypeFilter = (row) => state.currentEntity === 'profiler' ? row.team_name === 'Profilers' : row.team_name !== 'Profilers';
+        const allTeamData = [...appState.allData, ...appState.drugTestsData, ...appState.mvrPspCdlData, ...appState.recruiterData, ...appState.profilerData];
+    const validTeams = [...new Set(allTeamData.map(d => d.team_name).filter(t => t && t !== 'Profilers'))];
 
+    const entityTypeFilter = (row) => {
+        const delegationMode = state.currentEntity; // Use Delegation's toggle
+
+        // 1. Check if the entity type matches the Delegation UI mode
+        if (delegationMode === 'profiler') {
+            return row.team_name === 'Profilers';
+        }
+        if (delegationMode === 'team') {
+            // This correctly filters *out* Profilers when in Team mode
+            // AND ensures it's a valid team
+            return row.team_name !== 'Profilers' && validTeams.includes(row.team_name);
+        }
+        return false; // Should not happen
+    };
+    
         const leadRiskDataForLevel = appState.allData.filter(row => {
             const dateMatch = row.date && new Date(row.date) >= fromDate && new Date(row.date) <= toDate;
-            if (!dateMatch || !entityTypeFilter(row)) return false;
-
-            if (state.currentEntity === 'team') {
+            if (!dateMatch || !entityTypeFilter(row)) return false; // entityTypeFilter now checks mode
+            
+            // FIX: Check against Delegation's toggle (state.currentEntity)
+            if (state.currentEntity === 'team') { 
                 return row.level === 'TEAM' || row.level === 'RECRUITER';
             }
+            // For 'profiler' mode
             return row.level === 'RECRUITER';
         });
 
@@ -1029,7 +1075,7 @@ function renderCompanyView() {
             ];
         // --- END: CORRECTED DATA AGGREGATION LOGIC ---
 
-            const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
+        const rankedForContract = calculateRankings(combinedDataForRank, state.currentEntity, ['ALL'], contractNames);
             const ranksMap = new Map(rankedForContract.map(r => [r.name, r.final_score]));
             contractSpecificRanks.set(item.id, ranksMap);
         });
