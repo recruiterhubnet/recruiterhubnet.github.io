@@ -1899,6 +1899,13 @@ if (mode !== 'profiler') {
     const allOnboardedPerHotLead = rankedData.map(d => d.onboarded_per_hot_lead).sort((a, b) => a - b);
     const allProfiledPerHotLead = rankedData.map(d => d.profiled_per_hot_lead).sort((a, b) => a - b);
    
+    // --- NEW: Calculate max values for profiled and completed ---
+    const allProfilesProfiled = rankedData.map(d => d.profiles_profiled);
+    const maxProfilesProfiled = Math.max(0, ...allProfilesProfiled);
+    const allProfilesCompleted = rankedData.map(d => d.profiles_completed);
+    const maxProfilesCompleted = Math.max(0, ...allProfilesCompleted);
+    // ------------------------------------------------------------
+
     const allProfilerNoteLenghts = rankedData.map(d => d.profiler_note_lenght_all).sort((a, b) => a - b);
     const allMedianTimeToProfile = rankedData.map(d => d.median_time_to_profile).filter(v => v !== null).sort((a, b) => a - b);
     const allMedianCallDurations = rankedData.map(d => d.median_call_duration).filter(v => v !== null).sort((a, b) => a - b);
@@ -1918,8 +1925,12 @@ if (mode !== 'profiler') {
         entry.drug_tests_per_hot_lead_percentile = getPercentile(entry.drug_tests_per_hot_lead, allDrugTestsPerHotLead);
         entry.onboarded_per_hot_lead_percentile = getPercentile(entry.onboarded_per_hot_lead, allOnboardedPerHotLead);
         entry.profiled_per_hot_lead_percentile = getPercentile(entry.profiled_per_hot_lead, allProfiledPerHotLead);
-        entry.profiles_profiled_percentile = getPercentile(entry.profiles_profiled, rankedData.map(d => d.profiles_profiled).sort((a, b) => a - b));
-        entry.profiles_completed_percentile = getPercentile(entry.profiles_completed, rankedData.map(d => d.profiles_completed).sort((a, b) => a - b));
+        
+        // --- NEW: Use prorated calculation instead of percentile ---
+        entry.profiles_profiled_percentile = maxProfilesProfiled > 0 ? (entry.profiles_profiled / maxProfilesProfiled) * 100 : 0;
+        entry.profiles_completed_percentile = maxProfilesCompleted > 0 ? (entry.profiles_completed / maxProfilesCompleted) * 100 : 0;
+        // ----------------------------------------------------------
+
         entry.mvr_percentile = getPercentile(entry.mvr, allMvr);
         entry.psp_percentile = getPercentile(entry.psp, allPsp);
         entry.cdl_percentile = getPercentile(entry.cdl, allCdl);
@@ -4312,3 +4323,4 @@ function getRankingsColumnsInOrder() {
         ...(mode !== 'profiler' ? ['onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile'] : [])
     ];
 }
+
