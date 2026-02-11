@@ -137,7 +137,7 @@ export function updateMultiSelectButtonText(buttonEl, dropdownEl, placeholderTex
 
 export function populateAllDropdowns(teamForRecruiters = null) {
     // --- Create Default Contract List ---
-    const defaultContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
+    const defaultContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML', 'TPOG'];
     const defaultContractsList = defaultContracts.map(c => ({ contract_type: c }));
 
     // Lead Risk View
