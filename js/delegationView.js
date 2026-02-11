@@ -77,7 +77,7 @@ function loadSettings() {
 // --- DYNAMIC DATA & CALCULATION FUNCTIONS ---
 function generateSettingsFromState() {
     // --- Use Default Contract List ---
-    const allContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
+    const allContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML', 'TPOG'];
     
     const combinedData = [...appState.allData, ...appState.drugTestsData, ...appState.recruiterData, ...appState.profilerData];
     const allTeams = [...new Set(combinedData.map(d => d.team_name).filter(d => d && d !== 'Profilers'))].sort();
