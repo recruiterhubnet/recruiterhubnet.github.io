@@ -1154,7 +1154,7 @@ function populateRankingsFilters() {
     // --- THIS IS THE FIX ---
     // It creates the hardcoded list and then tells the function to only select "ALL" by default.
     const defaultContracts = [
-        'ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'
+        'ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML', 'TPOG'
     ];
     const allContractsList = defaultContracts.map(contractName => ({ contract_type: contractName }));
 
@@ -1467,7 +1467,7 @@ function applyExclusionRules(aggregatedData, settings, selectedCompanies, select
         // If a matching specific rule is found, override the default one.
         if (specificRuleSet) {
             applicableRuleSet = specificRuleSet;
-            console.log(`Applying specific exclusion rule set: "${specificRuleSet.name}" for ${company} - ${contract}`);
+            
         }
     }
 
@@ -4323,4 +4323,3 @@ function getRankingsColumnsInOrder() {
         ...(mode !== 'profiler' ? ['onboarded_per_hot_lead', 'onboarded_per_hot_lead_percentile'] : [])
     ];
 }
-
