@@ -220,7 +220,7 @@ function initializeApp() {
 
         const transformedMvrPspCdlData = [];
         const docTypes = ['mvr', 'psp', 'cdl'];
-        const contractTypes = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
+        const contractTypes = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML', 'TPOG'];
         const companies = [
             { suffix: 'eb', name: 'EB Infinity' },
             { suffix: 'smj', name: 'SMJ' },
