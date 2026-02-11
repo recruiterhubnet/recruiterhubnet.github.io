@@ -48,7 +48,7 @@ export function rerenderTimeToEngageView() {
 }
 
 function populateTimeToEngageFilters() {
-    const defaultContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML'];
+    const defaultContracts = ['ALL', 'CPM', 'CPML', 'LOO', 'LPOO', 'MCLOO', 'MCOO', 'OO', 'POG', 'TCPM', 'TCPML', 'TPOG'];
     const defaultContractsList = defaultContracts.map(c => ({ contract_type: c }));
 
     populateFilters(document.getElementById('tteRecruiterFilter'), state.allData, 'recruiter_name', 'All Recruiters');
