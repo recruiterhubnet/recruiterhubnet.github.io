@@ -1947,71 +1947,138 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
 /* --- END: Delegation Action Tooltip --- */
 /* --- START: REDESIGNED Styles for Delegation Summary Image --- */
 .delegation-summary-image-container {
-    position: absolute;
-    left: -9999px;
-    top: 0;
-    padding: 40px;
-    background-color: #111827;
-    color: #d1d5db;
+    position: absolute; left: -9999px; top: 0;
+    padding: 50px 60px;
+    background-color: #0b1120; /* Deep, sleek slate background */
+    color: #f8fafc;
     font-family: 'Inter', sans-serif;
-    width: 900px; /* A bit wider for the new layout */
-    border: 1px solid #374151;
+    width: 1312px; /* 25% wider than the previous 1050px */
+    box-sizing: border-box;
 }
 
 .delegation-summary-image-container h1 {
     font-size: 28px;
-    font-weight: 700;
-    color: #ffffff;
+    font-weight: 800;
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+    color: #ffffff;
 }
 
 .delegation-summary-image-container .summary-subtitle {
     font-size: 14px;
     text-align: center;
-    color: #9ca3af;
+    color: #64748b;
     margin-bottom: 40px;
+    font-weight: 500;
 }
 
-.delegation-summary-image-container .entity-block {
-    display: grid;
-    grid-template-columns: 220px 1fr; /* Name column | Details column */
-    gap: 24px; /* Space between columns */
-    align-items: start;
-    padding: 12px 0;
-    border-bottom: 1px solid #374151; /* Separator line */
+.delegation-summary-image-container .company-section {
+    margin-bottom: 24px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
 }
 
-.delegation-summary-image-container .entity-block:last-of-type {
+.delegation-summary-image-container .company-section:last-child {
+    margin-bottom: 0;
+}
+
+.delegation-summary-image-container .company-header {
+    padding: 14px 24px;
+    font-size: 18px;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Beautiful colored indicator bar next to the company name */
+.delegation-summary-image-container .company-header::before {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 18px;
+    border-radius: 4px;
+}
+
+.delegation-summary-image-container .company-amongus { color: #22d3ee; }
+.delegation-summary-image-container .company-amongus::before { background-color: #22d3ee; }
+.delegation-summary-image-container .company-eb-infinity { color: #60a5fa; }
+.delegation-summary-image-container .company-eb-infinity::before { background-color: #60a5fa; }
+.delegation-summary-image-container .company-smj { color: #f59e0b; }
+.delegation-summary-image-container .company-smj::before { background-color: #f59e0b; }
+.delegation-summary-image-container .company-inka { color: #818cf8; }
+.delegation-summary-image-container .company-inka::before { background-color: #818cf8; }
+
+.delegation-summary-image-container .contract-row {
+    display: flex;
+    padding: 14px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    align-items: center;
+}
+
+.delegation-summary-image-container .contract-row:last-child {
     border-bottom: none;
 }
 
-.delegation-summary-image-container .entity-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: #60a5fa;
-    text-align: right; /* Aligns names to the right for a clean edge */
-}
-
-.delegation-summary-image-container .delegation-details p {
+.delegation-summary-image-container .contract-name {
+    width: 120px;
+    flex-shrink: 0;
+    font-weight: 700;
+    color: #94a3b8;
     font-size: 15px;
-    line-height: 1.6;
-    margin: 0 0 8px 0; /* Adds a small space below each line */
+    letter-spacing: 0.05em;
 }
 
-.delegation-summary-image-container .delegation-details p:last-child {
-    margin-bottom: 0; /* Removes space from the very last line */
+.delegation-summary-image-container .teams-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.delegation-summary-image-container .team-item {
+    /* Old-school inline-block is html2canvas's best friend for mixed fonts */
+    display: inline-block;
+    background: #1e293b; 
+    border: 1px solid #334155; 
+    border-radius: 6px;
+    padding: 10px 14px; /* Symmetrical padding creates the shape naturally */
+    margin: 0;
+    line-height: 14px; /* Matches the font-size to eliminate invisible spacing */
+}
+
+.delegation-summary-image-container .team-name {
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 14px;
+    margin-right: 8px;
+    display: inline-block;
+    vertical-align: middle; /* Forces optical centering */
+}
+
+.delegation-summary-image-container .team-pct {
+    color: #38bdf8;
+    font-weight: 700;
+    font-size: 14px;
+    font-family: 'ui-monospace', monospace;
+    display: inline-block;
+    vertical-align: middle; /* Forces optical centering */
 }
 
 .delegation-summary-image-container .no-delegation-text {
-    color: #6b7280; /* Dimmer color for less emphasis */
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
     font-style: italic;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
 }
-
-/* Company-specific colors for the image text */
-.delegation-summary-image-container .company-amongus { color: #22d3ee; }
-.delegation-summary-image-container .company-eb-infinity { color: #60a5fa; }
-.delegation-summary-image-container .company-smj { color: #f59e0b; }
 /* --- END: REDESIGNED Styles for Delegation Summary Image --- */
 
 /* --- START: RANKINGS IMAGE MODAL STYLES (FINAL MODERN TABLE) --- */
@@ -2362,3 +2429,4 @@ tr.contract-color-5 td.breakdown-cell { background-color: rgba(251, 113, 133, 0.
     }
 }
 /* --- END: Global Settings Button Pulse --- */
+
