@@ -1707,7 +1707,7 @@ function downloadAsTextFile(content, filename) {
     URL.revokeObjectURL(url);
 }
 
-// ADD THIS NEW FUNCTION at the end of the file
+// --- START: UPDATED EXPORT FUNCTIONS ---
 function generateAndDownloadSummary() {
     // This feature is only available in the Master View, which calculates the data.
     if (state.currentView !== 'master') {
@@ -1715,84 +1715,83 @@ function generateAndDownloadSummary() {
         return;
     }
 
-    const delegationData = state.masterViewData; // Use cached data
-    if (!delegationData || delegationData.length === 0) {
+    const summaryText = generateDelegationSummaryText();
+    if (!summaryText) {
         alert("No data available to generate a summary.");
         return;
     }
-
-    let summary = `DELEGATION SUMMARY - ${state.currentEntity.toUpperCase()}\n`;
-    summary += `Generated on: ${new Date().toLocaleString()}\n\n`;
-
-    delegationData.forEach(entityRow => {
-        summary += `--- ${entityRow.entity} ---\n`;
-        const breakdownParts = [];
-        const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
-
-        for (const company of sortedCompanies) {
-            const contracts = entityRow.companyBreakdowns[company]
-                .filter(b => b.projDel > 0) // Only include contracts with projected delegation
-                .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
-            
-            if (contracts.length > 0) {
-                breakdownParts.push(`${company}: ${contracts.join(', ')}`);
-            }
-        }
-        
-        if (breakdownParts.length > 0) {
-            summary += breakdownParts.join(' | ') + '\n';
-        } else {
-            summary += 'No projected delegations.\n';
-        }
-        summary += '\n'; // Add a blank line for readability
-    });
     
     const date = new Date();
     const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const filename = `Delegation_Summary_${state.currentEntity}_${dateString}.txt`;
     
-    downloadAsTextFile(summary, filename);
+    downloadAsTextFile(summaryText, filename);
 }
-// ADD THIS NEW HELPER FUNCTION
+
 function generateDelegationSummaryText() {
     if (state.currentView !== 'master' || !state.masterViewData || state.masterViewData.length === 0) {
         return null;
     }
 
-    // --- THIS IS THE FIX: Get a list of all visible contract/group IDs ---
     const visibleItemIds = [
         ...state.settings.contracts.filter(c => state.settings.visibility[c.id]).map(c => c.id),
         ...state.settings.groups.filter(g => state.settings.visibility[g.id]).map(g => g.id)
     ];
-    // Find the ID for the 'ALL' contract to specifically exclude it
     const allContractId = state.settings.contracts.find(c => c.name.toUpperCase() === 'ALL')?.id;
-
 
     let summary = `DELEGATION SUMMARY - ${state.currentEntity.toUpperCase()}\n`;
     summary += `Generated on: ${new Date().toLocaleString()}\n\n`;
 
+    // 1. Re-group data: Company -> Contract -> Entities
+    const groupedByCompanyAndContract = {};
+
     state.masterViewData.forEach(entityRow => {
-        summary += `--- ${entityRow.entity} ---\n`;
-        const breakdownParts = [];
         const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
 
-        for (const company of sortedCompanies) {
-            const contracts = entityRow.companyBreakdowns[company]
-                // --- THIS IS THE FIX: Filter the contracts based on visibility ---
-                .filter(b => {
-                    const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
-                    // Exclude if it has no projection, is not visible, or is the 'ALL' contract
-                    return b.projDel > 0 && item && visibleItemIds.includes(item.id) && item.id !== allContractId;
-                })
-                .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
-            
+        sortedCompanies.forEach(company => {
+            const contracts = entityRow.companyBreakdowns[company].filter(b => {
+                const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
+                return item && b.projDel > 0 && visibleItemIds.includes(item.id) && item.id !== allContractId;
+            });
+
             if (contracts.length > 0) {
-                breakdownParts.push(`${company}: ${contracts.join(', ')}`);
+                if (!groupedByCompanyAndContract[company]) {
+                    groupedByCompanyAndContract[company] = {};
+                }
+
+                contracts.forEach(contract => {
+                    if (!groupedByCompanyAndContract[company][contract.name]) {
+                        groupedByCompanyAndContract[company][contract.name] = [];
+                    }
+                    groupedByCompanyAndContract[company][contract.name].push({
+                        entity: entityRow.entity,
+                        projDel: contract.projDel
+                    });
+                });
             }
-        }
-        
-        summary += breakdownParts.length > 0 ? breakdownParts.join(' | ') + '\n\n' : 'No projected delegations.\n\n';
+        });
     });
+
+    const sortedCompaniesGrouped = Object.keys(groupedByCompanyAndContract).sort();
+
+    // 2. Build Text Output
+    if (sortedCompaniesGrouped.length === 0) {
+        summary += 'No projected delegations.\n\n';
+    } else {
+        sortedCompaniesGrouped.forEach(company => {
+            summary += `--- ${company} ---\n`;
+            const contractsMap = groupedByCompanyAndContract[company];
+            const sortedContracts = Object.keys(contractsMap).sort();
+            
+            sortedContracts.forEach(contractName => {
+                // Sort entities descending by projected delegation
+                const entities = contractsMap[contractName].sort((a, b) => b.projDel - a.projDel);
+                const entityStrings = entities.map(e => `${e.entity} (${e.projDel.toFixed(0)}%)`);
+                summary += `${contractName}: ${entityStrings.join(' | ')}\n`;
+            });
+            summary += '\n';
+        });
+    }
     
     return summary;
 }
@@ -1840,6 +1839,7 @@ function downloadDelegationSummary() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
 function downloadDelegationAsImage() {
     if (state.currentView !== 'master' || !state.masterViewData || state.masterViewData.length === 0) {
         alert("No data available to generate an image. This feature is only available in Master View.");
@@ -1849,7 +1849,6 @@ function downloadDelegationAsImage() {
     const container = document.createElement('div');
     container.className = 'delegation-summary-image-container';
 
-    // --- THIS IS THE FIX: Get a list of all visible contract/group IDs ---
     const visibleItemIds = [
         ...state.settings.contracts.filter(c => state.settings.visibility[c.id]).map(c => c.id),
         ...state.settings.groups.filter(g => state.settings.visibility[g.id]).map(g => g.id)
@@ -1859,51 +1858,80 @@ function downloadDelegationAsImage() {
     let innerHTML = `<h1>DELEGATION SUMMARY - ${state.currentEntity.toUpperCase()}</h1>`;
     innerHTML += `<p class="summary-subtitle">Generated on: ${new Date().toLocaleString()}</p>`;
 
-    state.masterViewData.forEach(entityRow => {
-        innerHTML += `<div class="entity-block">`;
-        innerHTML += `<h2 class="entity-name">${entityRow.entity}</h2>`;
-        innerHTML += `<div class="delegation-details">`;
-        
-        const visibleItemIds = [
-            ...state.settings.contracts.filter(c => state.settings.visibility[c.id]).map(c => c.id),
-            ...state.settings.groups.filter(g => state.settings.visibility[g.id]).map(g => g.id)
-        ];
-        const allContractId = state.settings.contracts.find(c => c.name.toUpperCase() === 'ALL')?.id;
+    // 1. Re-group data: Company -> Contract -> Entities
+    const groupedByCompanyAndContract = {};
 
-        const allCompaniesBreakdown = [];
+    state.masterViewData.forEach(entityRow => {
         const sortedCompanies = Object.keys(entityRow.companyBreakdowns).sort();
 
-        for (const company of sortedCompanies) {
-            const contracts = entityRow.companyBreakdowns[company]
-                .filter(b => {
-                    const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
-                    // Exclude if it has no projection, is not visible, or is the 'ALL' contract
-                    return item && b.projDel > 0 && visibleItemIds.includes(item.id) && item.id !== allContractId;
-                })
-                .map(b => `${b.name} (${b.projDel.toFixed(0)}%)`);
+        sortedCompanies.forEach(company => {
+            const contracts = entityRow.companyBreakdowns[company].filter(b => {
+                const item = state.settings.contracts.find(c => c.name === b.name) || state.settings.groups.find(g => g.name === b.name);
+                return item && b.projDel > 0 && visibleItemIds.includes(item.id) && item.id !== allContractId;
+            });
 
             if (contracts.length > 0) {
-                const companyClass = `company-${company.toLowerCase().replace(/\s+/g, '-')}`;
-                allCompaniesBreakdown.push(`<strong class="${companyClass}">${company}:</strong> ${contracts.join(', ')}`);
-            }
-        }
+                if (!groupedByCompanyAndContract[company]) {
+                    groupedByCompanyAndContract[company] = {};
+                }
 
-        if (allCompaniesBreakdown.length > 0) {
-            // Join companies with the "|" separator for the new format
-            innerHTML += `<p>${allCompaniesBreakdown.join('<span style="color: #4b5563; margin: 0 0.75rem; font-weight: 300;">|</span>')}</p>`;
-        } else {
-            innerHTML += `<p class="no-delegation-text">No projected delegations.</p>`;
-        }
-        
-        innerHTML += `</div></div>`;
+                contracts.forEach(contract => {
+                    if (!groupedByCompanyAndContract[company][contract.name]) {
+                        groupedByCompanyAndContract[company][contract.name] = [];
+                    }
+                    groupedByCompanyAndContract[company][contract.name].push({
+                        entity: entityRow.entity,
+                        projDel: contract.projDel
+                    });
+                });
+            }
+        });
     });
+
+    const sortedCompaniesGrouped = Object.keys(groupedByCompanyAndContract).sort();
+
+    // 2. Build HTML Output (COMPACT ROW DESIGN)
+    if (sortedCompaniesGrouped.length === 0) {
+        innerHTML += `<div class="no-delegation-text">No projected delegations available based on current filters.</div>`;
+    } else {
+        sortedCompaniesGrouped.forEach(company => {
+            const companyClass = `company-${company.toLowerCase().replace(/\s+/g, '-')}`;
+            
+            innerHTML += `<div class="company-section">`;
+            innerHTML += `<div class="company-header ${companyClass}">${company}</div>`;
+            
+            const contractsMap = groupedByCompanyAndContract[company];
+            const sortedContracts = Object.keys(contractsMap).sort();
+            
+            sortedContracts.forEach(contractName => {
+                // Sort entities descending by projected delegation percentage
+                const entities = contractsMap[contractName].sort((a, b) => b.projDel - a.projDel);
+                
+                innerHTML += `<div class="contract-row">`;
+                innerHTML += `<div class="contract-name">${contractName}</div>`;
+                innerHTML += `<div class="teams-wrapper">`;
+                
+                // Minimalist inline tokens
+                const teamsHtml = entities.map(e => 
+                    `<div class="team-item">
+                        <span class="team-name">${e.entity}</span>
+                        <span class="team-pct">${e.projDel.toFixed(0)}%</span>
+                    </div>`
+                ).join('');
+                
+                innerHTML += `${teamsHtml}</div></div>`;
+            });
+            
+            innerHTML += `</div>`; // Close company-section
+        });
+    }
 
     container.innerHTML = innerHTML;
     document.body.appendChild(container);
 
     html2canvas(container, {
-        backgroundColor: '#111827',
-        scale: 2
+        backgroundColor: '#0b1120',
+        scale: 2 // High resolution
     }).then(canvas => {
         const a = document.createElement('a');
         const date = new Date();
@@ -1918,6 +1946,7 @@ function downloadDelegationAsImage() {
         document.body.removeChild(container);
     });
 }
+// --- END: UPDATED EXPORT FUNCTIONS ---
 // ADD THIS NEW FUNCTION
 function updateDelegationViewVisibility() {
     const delegationView = document.getElementById('delegationView');
